@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Scissors, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -39,52 +39,41 @@ const Login = () => {
 
   return (
     <div className="flex w-full min-h-screen">
-      <div className="hidden md:flex flex-1 bg-gradient-to-br from-primary via-primary to-primary/90 items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.05),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.03),transparent_50%)]" />
-        <div className="relative z-10 text-center">
+      <div className="hidden md:flex flex-1 items-center justify-center relative overflow-hidden" style={{ backgroundColor: "#000000" }}>
+        <div className="relative z-10 text-center px-10">
           <img
             alt="ZERO81 Studio"
-            className="max-w-[350px] w-full h-auto drop-shadow-2xl"
+            className="max-w-[480px] w-full h-auto"
             style={{ animation: "fadeInScale 0.8s ease-out" }}
             src="/lovable-uploads/0bca10b4-c0c2-418f-95ad-41475de12527.png"
           />
-          <p className="text-white/40 text-sm mt-6 tracking-[0.3em] uppercase font-light">
-            Sistema de Gestão
-          </p>
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-6 md:p-10 bg-background">
+      <div className="flex-1 flex items-center justify-center p-6 md:p-10 bg-white">
         <div className="w-full max-w-[380px]">
-          <div className="flex justify-center mb-8 md:hidden">
-            <div className="bg-primary p-5 rounded-2xl shadow-lg">
+          <div className="flex justify-center mb-10 md:hidden">
+            <div className="p-6 rounded-2xl" style={{ backgroundColor: "#000000" }}>
               <img
                 alt="ZERO81 Studio"
-                className="max-w-[160px]"
-                src="/lovable-uploads/5d98ac67-06fd-4e43-8f41-d5f6f2eb18b0.png"
+                className="max-w-[180px]"
+                src="/lovable-uploads/0bca10b4-c0c2-418f-95ad-41475de12527.png"
               />
             </div>
           </div>
 
           <div className="mb-8">
-            <div className="hidden md:flex items-center gap-2 mb-6">
-              <Scissors className="h-5 w-5 text-muted-foreground" />
-              <span className="text-sm font-medium text-muted-foreground tracking-wider uppercase">
-                ZERO81 Studio
-              </span>
-            </div>
-            <h1 className="text-3xl font-bold text-foreground tracking-tight">
+            <h1 className="text-3xl font-bold tracking-tight" style={{ color: "#000000" }}>
               Bem-vindo de volta
             </h1>
-            <p className="text-muted-foreground mt-1.5 text-sm">
+            <p className="mt-2 text-sm" style={{ color: "#888888" }}>
               Entre com suas credenciais para acessar o sistema
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
+              <label className="text-[11px] font-semibold uppercase tracking-wider mb-2 block" style={{ color: "#999999" }}>
                 Email
               </label>
               <input
@@ -92,11 +81,18 @@ const Login = () => {
                 placeholder="seu@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="login-input"
+                className="w-full px-4 py-3.5 rounded-xl text-[15px] transition-all duration-200 outline-none"
+                style={{
+                  border: "1px solid #e0e0e0",
+                  backgroundColor: "#ffffff",
+                  color: "#000000",
+                }}
+                onFocus={(e) => { e.target.style.borderColor = "#000000"; e.target.style.boxShadow = "0 0 0 3px rgba(0,0,0,0.05)"; }}
+                onBlur={(e) => { e.target.style.borderColor = "#e0e0e0"; e.target.style.boxShadow = "none"; }}
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
+              <label className="text-[11px] font-semibold uppercase tracking-wider mb-2 block" style={{ color: "#999999" }}>
                 Senha
               </label>
               <input
@@ -104,26 +100,47 @@ const Login = () => {
                 placeholder="Digite sua senha"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="login-input"
+                className="w-full px-4 py-3.5 rounded-xl text-[15px] transition-all duration-200 outline-none"
+                style={{
+                  border: "1px solid #e0e0e0",
+                  backgroundColor: "#ffffff",
+                  color: "#000000",
+                }}
+                onFocus={(e) => { e.target.style.borderColor = "#000000"; e.target.style.boxShadow = "0 0 0 3px rgba(0,0,0,0.05)"; }}
+                onBlur={(e) => { e.target.style.borderColor = "#e0e0e0"; e.target.style.boxShadow = "none"; }}
               />
             </div>
 
             <div className="flex justify-between items-center text-sm mt-1">
-              <label className="flex items-center gap-2.5 cursor-pointer text-muted-foreground select-none text-[13px]">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none text-[13px]" style={{ color: "#777777" }}>
                 <input
                   type="checkbox"
                   checked={remember}
                   onChange={(e) => setRemember(e.target.checked)}
-                  className="w-4 h-4 cursor-pointer accent-primary rounded"
+                  className="w-4 h-4 cursor-pointer rounded"
+                  style={{ accentColor: "#000000" }}
                 />
                 Lembrar-me
               </label>
-              <Link to="/forgot-password" className="text-muted-foreground font-medium transition-colors hover:text-foreground no-underline text-[13px]">
+              <Link
+                to="/forgot-password"
+                className="font-medium transition-colors no-underline text-[13px] hover:opacity-70"
+                style={{ color: "#777777" }}
+              >
                 Esqueceu a senha?
               </Link>
             </div>
 
-            <button type="submit" disabled={loading} className="login-button mt-3 flex items-center justify-center gap-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 border-none rounded-xl text-[15px] font-semibold cursor-pointer transition-all duration-200 tracking-wide flex items-center justify-center gap-2 mt-3 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
+              style={{
+                backgroundColor: "#000000",
+                color: "#ffffff",
+                boxShadow: "0 4px 14px rgba(0,0,0,0.15)",
+              }}
+            >
               {loading ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> Entrando...</>
               ) : (
