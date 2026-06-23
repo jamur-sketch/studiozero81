@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { externalSupabase } from "@/lib/external-supabase";
 import { Search, Plus, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -35,10 +34,12 @@ import { toast } from "@/hooks/use-toast";
 
 interface Client {
   id: string;
-  nome: string;
-  telefone: string | null;
+  name: string;
+  phone: string | null;
   email: string | null;
-  ultimo_agendamento: string | null;
+  last_booking_date: string | null;
+  user_id: string | null;
+  created_at: string;
 }
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
@@ -51,17 +52,14 @@ export default function ClientesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(25);
 
-  // Modal states
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
-  // Form state
   const [formName, setFormName] = useState("");
   const [formPhone, setFormPhone] = useState("");
   const [formEmail, setFormEmail] = useState("");
-  const [formNotes, setFormNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
@@ -71,20 +69,20 @@ export default function ClientesPage() {
 
   async function fetchClients() {
     setLoading(true);
-    const { data, error } = await externalSupabase
-      .from("clientes")
+    const { data, error } = await supabase
+      .from("clients")
       .select("*")
-      .order("nome");
+      .order("name");
 
     if (!error && data) {
-      setClients(data);
+      setClients(data as Client[]);
     }
     setLoading(false);
   }
 
   const isActive = (client: Client) => {
-    if (!client.ultimo_agendamento) return false;
-    const lastDate = new Date(client.ultimo_agendamento);
+    if (!client.last_booking_date) return false;
+    const lastDate = new Date(client.last_booking_date);
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     return lastDate >= thirtyDaysAgo;
@@ -93,8 +91,8 @@ export default function ClientesPage() {
   const filtered = clients.filter((c) => {
     const q = search.toLowerCase();
     const matchesSearch =
-      c.nome.toLowerCase().includes(q) ||
-      (c.telefone && c.telefone.includes(q)) ||
+      c.name.toLowerCase().includes(q) ||
+      (c.phone && c.phone.includes(q)) ||
       (c.email && c.email.toLowerCase().includes(q));
 
     if (statusFilter === "active") return matchesSearch && isActive(c);
@@ -121,7 +119,6 @@ export default function ClientesPage() {
     setFormName("");
     setFormPhone("");
     setFormEmail("");
-    setFormNotes("");
     setEditMode(false);
     setSelectedClient(null);
   };
@@ -132,10 +129,9 @@ export default function ClientesPage() {
   };
 
   const openEditModal = (client: Client) => {
-    setFormName(client.nome);
-    setFormPhone(client.telefone || "");
+    setFormName(client.name);
+    setFormPhone(client.phone || "");
     setFormEmail(client.email || "");
-    setFormNotes("");
     setEditMode(true);
     setSelectedClient(client);
     setAddModalOpen(true);
@@ -159,9 +155,9 @@ export default function ClientesPage() {
     setSaving(true);
 
     if (editMode && selectedClient) {
-      const { error } = await externalSupabase
-        .from("clientes")
-        .update({ nome: formName, telefone: formPhone || null, email: formEmail || null })
+      const { error } = await supabase
+        .from("clients")
+        .update({ name: formName, phone: formPhone || null, email: formEmail || null })
         .eq("id", selectedClient.id);
 
       if (error) {
@@ -173,9 +169,9 @@ export default function ClientesPage() {
         fetchClients();
       }
     } else {
-      const { error } = await externalSupabase
-        .from("clientes")
-        .insert({ nome: formName, telefone: formPhone || null, email: formEmail || null });
+      const { error } = await supabase
+        .from("clients")
+        .insert({ name: formName, phone: formPhone || null, email: formEmail || null });
 
       if (error) {
         toast({ title: "Erro ao cadastrar cliente", variant: "destructive" });
@@ -191,7 +187,7 @@ export default function ClientesPage() {
 
   const handleDelete = async () => {
     if (!selectedClient) return;
-    const { error } = await externalSupabase.from("clientes").delete().eq("id", selectedClient.id);
+    const { error } = await supabase.from("clients").delete().eq("id", selectedClient.id);
     if (error) {
       toast({ title: "Erro ao excluir cliente", variant: "destructive" });
     } else {
@@ -205,7 +201,6 @@ export default function ClientesPage() {
   return (
     <AppLayout>
       <div className="flex-1 flex flex-col bg-secondary">
-        {/* Header */}
         <header className="bg-card border-b border-border px-6 md:px-10 py-5">
           <div className="flex items-center justify-between">
             <div>
@@ -225,7 +220,6 @@ export default function ClientesPage() {
 
         <main className="flex-1 p-4 md:p-6">
           <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
-            {/* Search & Filters */}
             <div className="p-6 border-b border-border">
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="relative flex-1">
@@ -250,7 +244,6 @@ export default function ClientesPage() {
               </div>
             </div>
 
-            {/* Table */}
             {loading ? (
               <p className="text-muted-foreground text-center py-10">Carregando...</p>
             ) : filtered.length === 0 ? (
@@ -274,10 +267,17 @@ export default function ClientesPage() {
                     <TableBody>
                       {paginated.map((client) => (
                         <TableRow key={client.id} className="hover:bg-muted/30 transition-colors">
-                          <TableCell className="font-semibold text-foreground">{client.nome}</TableCell>
-                          <TableCell className="text-muted-foreground">{client.telefone || "—"}</TableCell>
+                          <TableCell className="font-semibold text-foreground">
+                            {client.name}
+                            {client.user_id && (
+                              <Badge variant="outline" className="ml-2 text-[10px] py-0">
+                                Cadastrado
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{client.phone || "—"}</TableCell>
                           <TableCell className="text-muted-foreground">{client.email || "—"}</TableCell>
-                          <TableCell className="text-muted-foreground">{formatDate(client.ultimo_agendamento)}</TableCell>
+                          <TableCell className="text-muted-foreground">{formatDate(client.last_booking_date)}</TableCell>
                           <TableCell>
                             {isActive(client) ? (
                               <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
@@ -320,7 +320,6 @@ export default function ClientesPage() {
                   </Table>
                 </div>
 
-                {/* Pagination */}
                 <div className="flex items-center justify-between p-4 border-t border-border">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Exibir</span>
@@ -369,7 +368,6 @@ export default function ClientesPage() {
         </main>
       </div>
 
-      {/* Add/Edit Client Modal */}
       <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
         <DialogContent>
           <DialogHeader>
@@ -393,10 +391,6 @@ export default function ClientesPage() {
               <Label htmlFor="email">E-mail</Label>
               <Input id="email" type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} placeholder="email@exemplo.com" />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Observações</Label>
-              <Textarea id="notes" value={formNotes} onChange={(e) => setFormNotes(e.target.value)} placeholder="Observações sobre o cliente..." rows={3} />
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddModalOpen(false)}>Cancelar</Button>
@@ -407,7 +401,6 @@ export default function ClientesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* View Client Modal */}
       <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
@@ -416,7 +409,6 @@ export default function ClientesPage() {
           </DialogHeader>
           {selectedClient && (
             <div className="space-y-6 py-4">
-              {/* Info */}
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-3 border-b border-border pb-2">
                   Informações Pessoais
@@ -424,11 +416,11 @@ export default function ClientesPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Nome</p>
-                    <p className="text-foreground">{selectedClient.nome}</p>
+                    <p className="text-foreground">{selectedClient.name}</p>
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">WhatsApp</p>
-                    <p className="text-foreground">{selectedClient.telefone || "—"}</p>
+                    <p className="text-foreground">{selectedClient.phone || "—"}</p>
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">E-mail</p>
@@ -442,26 +434,29 @@ export default function ClientesPage() {
                       <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100">Inativo</Badge>
                     )}
                   </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tipo</p>
+                    <p className="text-foreground">{selectedClient.user_id ? "Cadastrado no portal" : "Adicionado manualmente"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cadastro</p>
+                    <p className="text-foreground">{formatDate(selectedClient.created_at)}</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Stats */}
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-3 border-b border-border pb-2">
                   Estatísticas
                 </h3>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="bg-muted/50 rounded-lg p-4 text-center border-t-2 border-foreground">
-                    <p className="text-2xl font-bold text-foreground">—</p>
-                    <p className="text-xs text-muted-foreground mt-1">Total de Visitas</p>
+                    <p className="text-2xl font-bold text-foreground">{formatDate(selectedClient.last_booking_date)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Último Agendamento</p>
                   </div>
                   <div className="bg-muted/50 rounded-lg p-4 text-center border-t-2 border-foreground">
-                    <p className="text-2xl font-bold text-foreground">{formatDate(selectedClient.ultimo_agendamento)}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Última Visita</p>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-4 text-center border-t-2 border-foreground">
-                    <p className="text-2xl font-bold text-foreground">—</p>
-                    <p className="text-xs text-muted-foreground mt-1">Ticket Médio</p>
+                    <p className="text-2xl font-bold text-foreground">{formatDate(selectedClient.created_at)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Cliente Desde</p>
                   </div>
                 </div>
               </div>
@@ -470,13 +465,12 @@ export default function ClientesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Modal */}
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Excluir Cliente</DialogTitle>
             <DialogDescription>
-              Tem certeza que deseja excluir <strong>{selectedClient?.nome}</strong>? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir <strong>{selectedClient?.name}</strong>? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

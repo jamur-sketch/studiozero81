@@ -101,7 +101,7 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ============================================================
--- App settings (token do Google) + Bookings
+-- App settings
 -- ============================================================
 CREATE TABLE public.app_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -115,39 +115,12 @@ ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Service role only" ON public.app_settings
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
-CREATE TABLE public.bookings (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  google_event_id text,
-  client_name text NOT NULL,
-  client_phone text NOT NULL,
-  service text NOT NULL,
-  start_time timestamptz NOT NULL,
-  end_time timestamptz NOT NULL,
-  status text NOT NULL DEFAULT 'confirmed',
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage bookings" ON public.bookings
-  FOR ALL TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'))
-  WITH CHECK (public.has_role(auth.uid(), 'admin'));
-CREATE POLICY "Authenticated users can view bookings" ON public.bookings
-  FOR SELECT TO authenticated USING (true);
-
-CREATE TRIGGER update_bookings_updated_at
-  BEFORE UPDATE ON public.bookings
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_app_settings_updated_at
-  BEFORE UPDATE ON public.app_settings
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
 -- ============================================================
--- Clientes
+-- Clientes (com user_id para portal do cliente)
 -- ============================================================
 CREATE TABLE public.clients (
   id uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   name text NOT NULL,
   phone text,
   email text,
@@ -163,9 +136,53 @@ CREATE POLICY "Admins can manage clients"
   ON public.clients FOR ALL TO authenticated
   USING (has_role(auth.uid(), 'admin'::app_role))
   WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Users can insert their own client record"
+  ON public.clients FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update their own client record"
+  ON public.clients FOR UPDATE TO authenticated
+  USING (auth.uid() = user_id);
 
 CREATE TRIGGER update_clients_updated_at
   BEFORE UPDATE ON public.clients
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
+-- Agendamentos (bookings) com client_id e price
+-- ============================================================
+CREATE TABLE public.bookings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id uuid REFERENCES public.clients(id) ON DELETE SET NULL,
+  client_name text NOT NULL,
+  client_phone text NOT NULL,
+  service text NOT NULL,
+  price numeric(10,2) NOT NULL DEFAULT 0,
+  start_time timestamptz NOT NULL,
+  end_time timestamptz NOT NULL,
+  status text NOT NULL DEFAULT 'confirmed',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins can manage bookings" ON public.bookings
+  FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+CREATE POLICY "Authenticated users can view bookings" ON public.bookings
+  FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Clients can create their own bookings" ON public.bookings
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    client_id IN (SELECT id FROM public.clients WHERE user_id = auth.uid())
+  );
+
+CREATE TRIGGER update_bookings_updated_at
+  BEFORE UPDATE ON public.bookings
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_app_settings_updated_at
+  BEFORE UPDATE ON public.app_settings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, Clock, User, Phone, ChevronLeft, Loader2, CalendarDays, Scissors } from "lucide-react";
-import { SERVICES, type ServiceName, getAvailableTimes, createBooking } from "@/lib/google-calendar";
+import { SERVICES, type ServiceName, getAvailableTimes, createBooking } from "@/lib/bookings";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 
@@ -87,6 +87,8 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
     });
   };
 
+  const svcInfo = SERVICES.find((s) => s.name === service);
+
   const stepIndicator = (
     <div className="flex items-center gap-2 px-6 py-3 bg-secondary/50 border-b border-border/50">
       {["Serviço", "Horário", "Dados"].map((label, i) => {
@@ -166,7 +168,10 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
                     disabled={loadingSlots}
                     className="flex items-center justify-between p-4 border border-border/60 rounded-xl hover:bg-accent hover:border-primary/20 transition-all text-left group disabled:opacity-50"
                   >
-                    <span className="font-semibold text-foreground text-sm">{svc.name}</span>
+                    <div>
+                      <span className="font-semibold text-foreground text-sm">{svc.name}</span>
+                      <span className="block text-xs text-muted-foreground mt-0.5">R$ {svc.price.toFixed(2)}</span>
+                    </div>
                     <span className="text-xs text-muted-foreground flex items-center gap-1.5 bg-secondary px-2.5 py-1 rounded-full group-hover:bg-primary/5">
                       <Clock className="h-3 w-3" />
                       {svc.duration} min
@@ -198,7 +203,7 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
               </div>
               <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground mb-4 bg-secondary px-3 py-1.5 rounded-full">
                 <Scissors className="h-3 w-3" />
-                {service} - {SERVICES.find((s) => s.name === service)?.duration} min
+                {service} - {svcInfo?.duration} min - R$ {svcInfo?.price.toFixed(2)}
               </div>
               {availableSlots.length === 0 ? (
                 <div className="text-center py-8">

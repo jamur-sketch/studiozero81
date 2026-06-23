@@ -6,6 +6,8 @@ import {
   Settings,
   LogOut,
   Scissors,
+  DollarSign,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -27,7 +29,9 @@ import { Separator } from "@/components/ui/separator";
 const navItems = [
   { title: "Agenda", url: "/home", icon: CalendarDays },
   { title: "Clientes", url: "/clientes", icon: Users },
+  { title: "Financeiro", url: "/financeiro", icon: DollarSign },
   { title: "Assinaturas", url: "/assinaturas", icon: CreditCard },
+  { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 

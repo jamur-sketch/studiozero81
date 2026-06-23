@@ -4,7 +4,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventClickArg, EventDropArg, DateSelectArg } from "@fullcalendar/core";
-import { getEvents, updateEvent, type CalendarEvent } from "@/lib/google-calendar";
+import { getBookings, updateBooking, type Booking } from "@/lib/bookings";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -27,14 +27,18 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
 
     setLoading(true);
     try {
-      const googleEvents = await getEvents(startStr, endStr);
-      const mapped = googleEvents.map((evt: CalendarEvent) => ({
-        id: evt.id,
-        title: evt.summary || "Sem título",
-        start: evt.start?.dateTime || evt.start,
-        end: evt.end?.dateTime || evt.end,
+      const bookings = await getBookings(startStr, endStr);
+      const mapped = bookings.map((b: Booking) => ({
+        id: b.id,
+        title: `${b.service} - ${b.client_name}`,
+        start: b.start_time,
+        end: b.end_time,
         extendedProps: {
-          description: evt.description || "",
+          description: `Telefone: ${b.client_phone}\nServiço: ${b.service}`,
+          clientName: b.client_name,
+          clientPhone: b.client_phone,
+          service: b.service,
+          status: b.status,
         },
       }));
       setEvents(mapped);
@@ -85,7 +89,7 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
     }
 
     try {
-      await updateEvent({ eventId: evt.id, start: newStart, end: newEnd });
+      await updateBooking({ id: evt.id, startTime: newStart, endTime: newEnd });
       toast({ title: "Horário atualizado!" });
     } catch (err: any) {
       info.revert();
@@ -96,7 +100,7 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
   const handleEventResize = useCallback(async (info: any) => {
     const evt = info.event;
     try {
-      await updateEvent({ eventId: evt.id, start: evt.start?.toISOString(), end: evt.end?.toISOString() });
+      await updateBooking({ id: evt.id, startTime: evt.start?.toISOString(), endTime: evt.end?.toISOString() });
       toast({ title: "Duração atualizada!" });
     } catch (err: any) {
       info.revert();
@@ -114,7 +118,7 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
       {loading && (
         <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-card text-foreground text-xs px-3.5 py-2 rounded-lg border border-border/60 shadow-md loading-indicator">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Sincronizando...
+          Carregando...
         </div>
       )}
       <FullCalendar
@@ -133,6 +137,7 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
         slotDuration="00:15:00"
         slotLabelInterval="01:00:00"
         allDaySlot={false}
+        hiddenDays={[0]}
         editable={true}
         selectable={true}
         selectMirror={true}

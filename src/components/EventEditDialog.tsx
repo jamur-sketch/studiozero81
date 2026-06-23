@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, Trash2, Save, Phone, User, Clock, Loader2, Scissors } from "lucide-react";
-import { SERVICES, updateEvent, cancelBooking } from "@/lib/google-calendar";
+import { SERVICES, updateBooking, cancelBooking } from "@/lib/bookings";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 
@@ -53,15 +53,13 @@ export function EventEditDialog({ isOpen, onClose, onSuccess, event }: EventEdit
     }
     setLoading(true);
     try {
-      await updateEvent({
-        eventId: event.id,
-        summary: `${service} - ${clientName.trim()}`,
-        description: `Telefone: ${clientPhone.trim()}\nServiço: ${service}`,
+      await updateBooking({
+        id: event.id,
+        service,
         clientName: clientName.trim(),
         clientPhone: clientPhone.trim(),
-        service,
       });
-      toast({ title: "Evento atualizado com sucesso!" });
+      toast({ title: "Agendamento atualizado com sucesso!" });
       onSuccess();
       onClose();
     } catch (err: any) {

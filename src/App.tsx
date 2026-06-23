@@ -12,6 +12,11 @@ import Home from "./pages/Home.tsx";
 import Clientes from "./pages/Clientes.tsx";
 import Assinaturas from "./pages/Assinaturas.tsx";
 import Configuracoes from "./pages/Configuracoes.tsx";
+import Financeiro from "./pages/Financeiro.tsx";
+import Relatorios from "./pages/Relatorios.tsx";
+import ClienteLogin from "./pages/ClienteLogin.tsx";
+import ClienteCadastro from "./pages/ClienteCadastro.tsx";
+import ClientePainel from "./pages/ClientePainel.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -28,11 +33,20 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+
+            {/* Admin routes */}
             <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
             <Route path="/assinaturas" element={<ProtectedRoute><Assinaturas /></ProtectedRoute>} />
             <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
+            <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
+
+            {/* Client portal routes */}
+            <Route path="/cliente/login" element={<ClienteLogin />} />
+            <Route path="/cliente/cadastro" element={<ClienteCadastro />} />
+            <Route path="/cliente/painel" element={<ClientePainel />} />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
