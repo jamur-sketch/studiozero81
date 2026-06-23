@@ -1,7 +1,22 @@
 -- ============================================================
 -- ZERO81 Studio - Setup completo do banco de dados
 -- Cole este script inteiro no SQL Editor do Supabase e rode.
+-- Pode rodar quantas vezes quiser: apaga tudo antes de recriar.
 -- ============================================================
+
+-- Limpa objetos existentes (ordem importa por causa das dependências)
+DROP TABLE IF EXISTS public.subscriptions CASCADE;
+DROP TABLE IF EXISTS public.subscription_plans CASCADE;
+DROP TABLE IF EXISTS public.bookings CASCADE;
+DROP TABLE IF EXISTS public.services CASCADE;
+DROP TABLE IF EXISTS public.clients CASCADE;
+DROP TABLE IF EXISTS public.app_settings CASCADE;
+DROP TABLE IF EXISTS public.user_roles CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS public.update_updated_at_column() CASCADE;
+DROP FUNCTION IF EXISTS public.has_role(uuid, app_role) CASCADE;
+DROP TYPE IF EXISTS public.app_role CASCADE;
 
 -- Enum de papéis (roles)
 CREATE TYPE public.app_role AS ENUM ('admin', 'barbeiro', 'recepcionista');
@@ -88,7 +103,7 @@ CREATE TRIGGER on_auth_user_created
 -- ============================================================
 -- App settings (token do Google) + Bookings
 -- ============================================================
-CREATE TABLE IF NOT EXISTS public.app_settings (
+CREATE TABLE public.app_settings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   key text UNIQUE NOT NULL,
   value text NOT NULL,
@@ -100,7 +115,7 @@ ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Service role only" ON public.app_settings
   FOR ALL TO service_role USING (true) WITH CHECK (true);
 
-CREATE TABLE IF NOT EXISTS public.bookings (
+CREATE TABLE public.bookings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   google_event_id text,
   client_name text NOT NULL,
