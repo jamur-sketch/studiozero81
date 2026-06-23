@@ -19,9 +19,14 @@ export interface Booking {
   start_time: string;
   end_time: string;
   status: string;
+  recurring: boolean;
+  recurrence_group: string | null;
   created_at: string;
   updated_at: string;
 }
+
+// Quantas semanas à frente um horário fixo (recorrente) é reservado de uma vez.
+export const RECURRENCE_WEEKS = 12;
 
 export async function getBookings(startDate: string, endDate: string): Promise<Booking[]> {
   const { data, error } = await supabase
@@ -91,6 +96,92 @@ export async function createBooking(data: {
   }
 
   return booking;
+}
+
+// Cria um horário fixo: reserva o mesmo dia/horário toda semana por RECURRENCE_WEEKS semanas.
+// Pula automaticamente as semanas em que o horário já estiver ocupado.
+export async function createRecurringBooking(data: {
+  date: string;
+  time: string;
+  service: string;
+  clientName: string;
+  clientPhone: string;
+  clientId?: string;
+  weeks?: number;
+}): Promise<{ created: number; skipped: number }> {
+  const svc = SERVICES.find((s) => s.name === data.service);
+  const duration = svc?.duration || 45;
+  const price = svc?.price || 0;
+  const weeks = data.weeks ?? RECURRENCE_WEEKS;
+
+  const firstStart = new Date(`${data.date}T${data.time}:00`);
+
+  // Monta as ocorrências semanais.
+  const occurrences = Array.from({ length: weeks }, (_, i) => {
+    const start = new Date(firstStart);
+    start.setDate(start.getDate() + i * 7);
+    const end = new Date(start.getTime() + duration * 60000);
+    return { start, end };
+  });
+
+  const rangeStart = occurrences[0].start.toISOString();
+  const rangeEnd = occurrences[occurrences.length - 1].end.toISOString();
+
+  // Busca agendamentos existentes no intervalo todo para checar conflitos em memória.
+  const { data: existing, error: existingError } = await supabase
+    .from("bookings")
+    .select("start_time, end_time")
+    .gte("start_time", rangeStart)
+    .lte("start_time", rangeEnd)
+    .neq("status", "cancelled");
+
+  if (existingError) throw new Error(existingError.message);
+
+  const group = crypto.randomUUID();
+  const rows: Record<string, any>[] = [];
+  let skipped = 0;
+
+  for (const occ of occurrences) {
+    const conflicts = (existing || []).some((b) => {
+      const bStart = new Date(b.start_time);
+      const bEnd = new Date(b.end_time);
+      return occ.start < bEnd && occ.end > bStart;
+    });
+
+    if (conflicts) {
+      skipped++;
+      continue;
+    }
+
+    rows.push({
+      client_name: data.clientName,
+      client_phone: data.clientPhone,
+      client_id: data.clientId || null,
+      service: data.service,
+      price,
+      start_time: occ.start.toISOString(),
+      end_time: occ.end.toISOString(),
+      status: "confirmed",
+      recurring: true,
+      recurrence_group: group,
+    });
+  }
+
+  if (rows.length === 0) {
+    throw new Error("Este horário já está ocupado em todas as próximas semanas.");
+  }
+
+  const { error } = await supabase.from("bookings").insert(rows);
+  if (error) throw new Error(error.message);
+
+  if (data.clientId) {
+    await supabase
+      .from("clients")
+      .update({ last_booking_date: rows[0].start_time })
+      .eq("id", data.clientId);
+  }
+
+  return { created: rows.length, skipped };
 }
 
 export async function updateBooking(data: {

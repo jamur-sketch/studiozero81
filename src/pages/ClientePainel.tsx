@@ -10,14 +10,22 @@ import {
   Plus,
   Scissors,
   User,
-  Phone,
   ChevronLeft,
   Loader2,
   X,
+  Repeat,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { SERVICES, type ServiceName, getAvailableTimes, createBooking, type Booking } from "@/lib/bookings";
+import {
+  SERVICES,
+  type ServiceName,
+  getAvailableTimes,
+  createBooking,
+  createRecurringBooking,
+  RECURRENCE_WEEKS,
+  type Booking,
+} from "@/lib/bookings";
 
 export default function ClientePainel() {
   const { user, signOut, loading: authLoading } = useAuth();
@@ -136,7 +144,14 @@ export default function ClientePainel() {
                     <Scissors className="h-5 w-5 text-black" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900">{b.service}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-gray-900">{b.service}</p>
+                      {b.recurring && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-violet-700 bg-violet-100 border border-violet-200 px-2 py-0.5 rounded-full">
+                          <Repeat className="h-3 w-3" /> Horário fixo
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-500">
                       {formatDate(b.start_time)} • {formatTime(b.start_time)} - {formatTime(b.end_time)}
                     </p>
@@ -218,6 +233,7 @@ function ClientBookingDialog({
   const [service, setService] = useState<ServiceName | "">("");
   const [availableSlots, setAvailableSlots] = useState<{ start: string; end: string }[]>([]);
   const [selectedTime, setSelectedTime] = useState("");
+  const [recurring, setRecurring] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
@@ -246,15 +262,31 @@ function ClientBookingDialog({
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      await createBooking({
-        date,
-        time: selectedTime,
-        service: service as string,
-        clientName,
-        clientPhone,
-        clientId,
-      });
-      toast({ title: "Agendamento criado com sucesso!" });
+      if (recurring) {
+        const { created, skipped } = await createRecurringBooking({
+          date,
+          time: selectedTime,
+          service: service as string,
+          clientName,
+          clientPhone,
+          clientId,
+        });
+        toast({
+          title: "Horário fixo reservado!",
+          description:
+            `${created} agendamentos criados${skipped > 0 ? ` (${skipped} semana(s) puladas por conflito)` : ""}.`,
+        });
+      } else {
+        await createBooking({
+          date,
+          time: selectedTime,
+          service: service as string,
+          clientName,
+          clientPhone,
+          clientId,
+        });
+        toast({ title: "Agendamento criado com sucesso!" });
+      }
       onSuccess();
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -267,6 +299,7 @@ function ClientBookingDialog({
     new Date(isoString).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 
   const svcInfo = SERVICES.find((s) => s.name === service);
+  const weekdayLabel = new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long" });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -424,6 +457,31 @@ function ClientBookingDialog({
                 </div>
               </div>
 
+              <button
+                type="button"
+                onClick={() => setRecurring((v) => !v)}
+                className={`w-full flex items-start gap-3 p-4 rounded-xl border text-left transition-all mb-5 ${
+                  recurring
+                    ? "border-violet-300 bg-violet-50"
+                    : "border-gray-200 bg-white hover:border-gray-300"
+                }`}
+              >
+                <div
+                  className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all ${
+                    recurring ? "bg-violet-600 border-violet-600" : "border-gray-300"
+                  }`}
+                >
+                  {recurring && <Repeat className="h-3 w-3 text-white" />}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Reservar sempre este horário</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Este horário fica fixo para você toda semana
+                    {" "}({weekdayLabel}, {selectedTime}) pelas próximas {RECURRENCE_WEEKS} semanas.
+                  </p>
+                </div>
+              </button>
+
               <Button
                 onClick={handleSubmit}
                 disabled={loading}
@@ -431,6 +489,8 @@ function ClientBookingDialog({
               >
                 {loading ? (
                   <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Agendando...</>
+                ) : recurring ? (
+                  "Reservar horário fixo"
                 ) : (
                   "Confirmar Agendamento"
                 )}

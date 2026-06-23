@@ -160,6 +160,8 @@ CREATE TABLE public.bookings (
   start_time timestamptz NOT NULL,
   end_time timestamptz NOT NULL,
   status text NOT NULL DEFAULT 'confirmed',
+  recurring boolean NOT NULL DEFAULT false,
+  recurrence_group uuid,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
