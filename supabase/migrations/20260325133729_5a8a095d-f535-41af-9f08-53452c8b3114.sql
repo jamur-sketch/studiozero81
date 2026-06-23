@@ -1,0 +1,1 @@
+UPDATE auth.users SET email_change = '', email_change_token_new = '', email_change_token_current = '', email_change_confirm_status = 0 WHERE email = 'estudioo081@gmail.com';
