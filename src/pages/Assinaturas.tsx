@@ -1,14 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { Users, DollarSign, PieChart, AlertCircle, Eye, Pencil, X, Plus, Check, Layers } from "lucide-react";
+import { Users, DollarSign, PieChart, AlertCircle, Pencil, X, Plus, Check, Layers } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { externalSupabase } from "@/lib/external-supabase";
 import { toast } from "@/hooks/use-toast";
 import AppLayout from "@/components/AppLayout";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
@@ -47,13 +45,6 @@ interface Subscription {
 
 interface Client {
   id: string;
-  nome: string;
-  telefone?: string | null;
-  ultimo_agendamento?: string | null;
-}
-
-interface InternalClient {
-  id: string;
   name: string;
   phone: string | null;
 }
@@ -63,7 +54,6 @@ export default function Assinaturas() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [internalClients, setInternalClients] = useState<InternalClient[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Modal states
@@ -91,26 +81,21 @@ export default function Assinaturas() {
     fetchData();
   }, []);
 
-  const normalizeText = (value?: string | null) => (value ?? "").trim().toLowerCase();
-  const normalizePhone = (value?: string | null) => (value ?? "").replace(/\D/g, "");
-
   const fetchData = async () => {
     setLoading(true);
-    const [plansRes, subsRes, clientsRes, internalClientsRes] = await Promise.all([
+    const [plansRes, subsRes, clientsRes] = await Promise.all([
       supabase.from("subscription_plans").select("*").order("price"),
       supabase.from("subscriptions").select("*"),
-      externalSupabase.from("clientes").select("id, nome, telefone, ultimo_agendamento").order("nome"),
-      supabase.from("clients").select("id, name, phone"),
+      supabase.from("clients").select("id, name, phone").order("name"),
     ]);
 
     if (plansRes.data) setPlans(plansRes.data);
     if (clientsRes.data) setClients(clientsRes.data);
-    if (internalClientsRes.data) setInternalClients(internalClientsRes.data);
 
-    if (subsRes.data && plansRes.data && internalClientsRes.data) {
+    if (subsRes.data && plansRes.data && clientsRes.data) {
       const enriched = subsRes.data.map((s: any) => {
         const plan = plansRes.data?.find((p: any) => p.id === s.plan_id);
-        const client = internalClientsRes.data?.find((c: any) => c.id === s.client_id);
+        const client = clientsRes.data?.find((c: any) => c.id === s.client_id);
         return {
           ...s,
           client_name: client?.name || "—",
@@ -121,54 +106,6 @@ export default function Assinaturas() {
       setSubscriptions(enriched);
     }
     setLoading(false);
-  };
-
-  const ensureInternalClientId = async (selectedClientId: string) => {
-    const existingInternalClient = internalClients.find((client) => client.id === selectedClientId);
-
-    if (existingInternalClient) {
-      return existingInternalClient.id;
-    }
-
-    const externalClient = clients.find((client) => client.id === selectedClientId);
-
-    if (!externalClient) {
-      throw new Error("Cliente selecionado não foi encontrado.");
-    }
-
-    const matchedInternalClient = internalClients.find((client) => {
-      const sameName = normalizeText(client.name) === normalizeText(externalClient.nome);
-      const externalPhone = normalizePhone(externalClient.telefone);
-      const internalPhone = normalizePhone(client.phone);
-
-      if (externalPhone && internalPhone) {
-        return sameName && externalPhone === internalPhone;
-      }
-
-      return sameName;
-    });
-
-    if (matchedInternalClient) {
-      return matchedInternalClient.id;
-    }
-
-    const { data, error } = await supabase
-      .from("clients")
-      .insert({
-        name: externalClient.nome,
-        phone: externalClient.telefone ?? null,
-        last_booking_date: externalClient.ultimo_agendamento ?? null,
-      })
-      .select("id, name, phone")
-      .single();
-
-    if (error || !data) {
-      throw new Error(error?.message || "Não foi possível preparar o cliente para a assinatura.");
-    }
-
-    setInternalClients((current) => [...current, data]);
-
-    return data.id;
   };
 
   // Stats
@@ -210,25 +147,12 @@ export default function Assinaturas() {
       return;
     }
 
-    let clientId: string;
-
-    try {
-      clientId = await ensureInternalClientId(subClientId);
-    } catch (error) {
-      toast({
-        title: "Erro ao criar",
-        description: error instanceof Error ? error.message : "Não foi possível vincular o cliente.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const startD = new Date(subStartDate);
     const nextBilling = new Date(startD);
     nextBilling.setMonth(nextBilling.getMonth() + 1);
 
     const payload = {
-      client_id: clientId,
+      client_id: subClientId,
       plan_id: subPlanId,
       start_date: subStartDate,
       next_billing_date: nextBilling.toISOString().split("T")[0],
@@ -483,10 +407,7 @@ export default function Assinaturas() {
                 <Select value={subClientId} onValueChange={setSubClientId}>
                   <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                   <SelectContent>
-                    {editingSub && subClientId && !clients.some((c) => c.id === subClientId) && (
-                      <SelectItem key={subClientId} value={subClientId}>{editingSub.client_name || "Cliente atual"}</SelectItem>
-                    )}
-                    {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                    {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
