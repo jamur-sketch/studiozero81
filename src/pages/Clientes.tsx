@@ -80,12 +80,14 @@ export default function ClientesPage() {
     setLoading(false);
   }
 
-  const isActive = (client: Client) => {
-    if (!client.last_booking_date) return false;
+  type ClientStatus = "active" | "inactive" | "new";
+
+  const getStatus = (client: Client): ClientStatus => {
+    if (!client.last_booking_date) return "new";
     const lastDate = new Date(client.last_booking_date);
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    return lastDate >= thirtyDaysAgo;
+    return lastDate >= thirtyDaysAgo ? "active" : "inactive";
   };
 
   const filtered = clients.filter((c) => {
@@ -95,9 +97,8 @@ export default function ClientesPage() {
       (c.phone && c.phone.includes(q)) ||
       (c.email && c.email.toLowerCase().includes(q));
 
-    if (statusFilter === "active") return matchesSearch && isActive(c);
-    if (statusFilter === "inactive") return matchesSearch && !isActive(c);
-    return matchesSearch;
+    if (statusFilter === "all") return matchesSearch;
+    return matchesSearch && getStatus(c) === statusFilter;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
@@ -237,6 +238,7 @@ export default function ClientesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="new">Cliente Novo</SelectItem>
                     <SelectItem value="active">Ativos</SelectItem>
                     <SelectItem value="inactive">Inativos</SelectItem>
                   </SelectContent>
@@ -279,15 +281,7 @@ export default function ClientesPage() {
                           <TableCell className="text-muted-foreground">{client.email || "—"}</TableCell>
                           <TableCell className="text-muted-foreground">{formatDate(client.last_booking_date)}</TableCell>
                           <TableCell>
-                            {isActive(client) ? (
-                              <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
-                                Ativo
-                              </Badge>
-                            ) : (
-                              <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100">
-                                Inativo
-                              </Badge>
-                            )}
+                            <StatusBadge status={getStatus(client)} />
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center justify-center gap-2">
@@ -428,11 +422,7 @@ export default function ClientesPage() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</p>
-                    {isActive(selectedClient) ? (
-                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">Ativo</Badge>
-                    ) : (
-                      <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100">Inativo</Badge>
-                    )}
+                    <StatusBadge status={getStatus(selectedClient)} />
                   </div>
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tipo</p>
@@ -480,5 +470,27 @@ export default function ClientesPage() {
         </DialogContent>
       </Dialog>
     </AppLayout>
+  );
+}
+
+function StatusBadge({ status }: { status: "active" | "inactive" | "new" }) {
+  if (status === "new") {
+    return (
+      <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100">
+        Cliente Novo
+      </Badge>
+    );
+  }
+  if (status === "active") {
+    return (
+      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
+        Ativo
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-100">
+      Inativo
+    </Badge>
   );
 }

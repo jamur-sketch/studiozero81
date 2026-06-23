@@ -100,7 +100,8 @@ export default function RelatoriosPage() {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const activeClients = clients.filter((c) => c.last_booking_date && new Date(c.last_booking_date) >= thirtyDaysAgo).length;
-  const inactiveClients = clients.length - activeClients;
+  const newClients = clients.filter((c) => !c.last_booking_date).length;
+  const inactiveClients = clients.filter((c) => c.last_booking_date && new Date(c.last_booking_date) < thirtyDaysAgo).length;
 
   const maxServiceCount = serviceRanking.length > 0 ? serviceRanking[0][1].count : 1;
   const maxHourCount = hourRanking.length > 0 ? Math.max(...hourRanking.map(([, c]) => c)) : 1;
@@ -147,11 +148,12 @@ export default function RelatoriosPage() {
                     </div>
                     <span className="text-sm text-muted-foreground">Clientes</span>
                   </div>
-                  <div className="flex items-baseline gap-3">
+                  <div className="flex items-baseline gap-2 flex-wrap">
                     <p className="text-2xl font-bold text-foreground">{clients.length}</p>
-                    <div className="flex gap-2 text-xs">
+                    <div className="flex gap-2 text-xs flex-wrap">
                       <span className="text-emerald-600">{activeClients} ativos</span>
                       <span className="text-red-500">{inactiveClients} inativos</span>
+                      <span className="text-blue-500">{newClients} novos</span>
                     </div>
                   </div>
                 </div>
