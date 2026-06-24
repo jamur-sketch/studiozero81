@@ -264,6 +264,11 @@ CREATE TABLE public.subscriptions (
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Authenticated users can view subscriptions" ON public.subscriptions FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Admins can manage subscriptions" ON public.subscriptions FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'::app_role)) WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Clients can create their own subscriptions" ON public.subscriptions
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    client_id IN (SELECT id FROM public.clients WHERE user_id = auth.uid())
+  );
 CREATE TRIGGER update_subscriptions_updated_at BEFORE UPDATE ON public.subscriptions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Planos padrão

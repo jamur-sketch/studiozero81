@@ -220,9 +220,17 @@ export default function Assinaturas() {
     fetchData();
   };
 
+  const approveSub = async (id: string) => {
+    const { error } = await supabase.from("subscriptions").update({ status: "active" }).eq("id", id);
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    toast({ title: "Assinatura aprovada!" });
+    fetchData();
+  };
+
   const statusBadge = (status: string) => {
     switch (status) {
       case "active": return <Badge className="bg-[hsl(120,40%,92%)] text-[hsl(120,50%,25%)] hover:bg-[hsl(120,40%,88%)]">Pago</Badge>;
+      case "pending": return <Badge className="bg-[hsl(40,90%,92%)] text-[hsl(35,90%,30%)] hover:bg-[hsl(40,90%,88%)]">Pendente</Badge>;
       case "overdue": return <Badge className="bg-[hsl(0,70%,95%)] text-[hsl(0,70%,35%)] hover:bg-[hsl(0,70%,90%)]">Atrasado</Badge>;
       case "cancelled": return <Badge variant="secondary">Cancelado</Badge>;
       default: return <Badge variant="secondary">{status}</Badge>;
@@ -323,6 +331,11 @@ export default function Assinaturas() {
                           <TableCell>{statusBadge(sub.status)}</TableCell>
                           <TableCell>
                             <div className="flex gap-2">
+                              {sub.status === "pending" && (
+                                <button onClick={() => approveSub(sub.id)} className="w-8 h-8 rounded-md bg-[hsl(120,40%,92%)] text-[hsl(120,50%,25%)] hover:bg-[hsl(120,50%,30%)] hover:text-white flex items-center justify-center transition-colors" title="Aprovar">
+                                  <Check className="h-3.5 w-3.5" />
+                                </button>
+                              )}
                               <button onClick={() => openEditSub(sub)} className="w-8 h-8 rounded-md bg-[hsl(30,100%,93%)] text-[hsl(30,100%,30%)] hover:bg-[hsl(30,100%,30%)] hover:text-white flex items-center justify-center transition-colors" title="Editar">
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>

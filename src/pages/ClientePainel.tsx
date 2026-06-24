@@ -14,6 +14,8 @@ import {
   Loader2,
   X,
   Repeat,
+  CreditCard,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,13 +29,35 @@ import {
   type Booking,
 } from "@/lib/bookings";
 
+interface Plan {
+  id: string;
+  name: string;
+  badge: string;
+  price: number;
+  cuts_per_month: number;
+  beards_per_month: number;
+  discount_percent: number;
+  is_featured: boolean;
+}
+
+interface Subscription {
+  id: string;
+  plan_id: string;
+  status: string;
+  next_billing_date: string;
+  payment_method: string;
+}
+
 export default function ClientePainel() {
   const { user, signOut, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [client, setClient] = useState<any>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [subscribePlan, setSubscribePlan] = useState<Plan | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -61,13 +85,25 @@ export default function ClientePainel() {
         console.error("Erro ao renovar horários fixos:", err);
       }
 
-      const { data: bookingData } = await supabase
-        .from("bookings")
-        .select("*")
-        .eq("client_id", clientData.id)
-        .order("start_time", { ascending: false });
+      const [bookingRes, plansRes, subRes] = await Promise.all([
+        supabase
+          .from("bookings")
+          .select("*")
+          .eq("client_id", clientData.id)
+          .order("start_time", { ascending: false }),
+        supabase.from("subscription_plans").select("*").order("price"),
+        supabase
+          .from("subscriptions")
+          .select("*")
+          .eq("client_id", clientData.id)
+          .neq("status", "cancelled")
+          .order("created_at", { ascending: false })
+          .limit(1),
+      ]);
 
-      setBookings(bookingData || []);
+      setBookings(bookingRes.data || []);
+      setPlans(plansRes.data || []);
+      setSubscription(subRes.data?.[0] || null);
     }
     setLoading(false);
   }, [user]);
@@ -138,6 +174,77 @@ export default function ClientePainel() {
             <span className="sm:hidden">Agendar</span>
           </Button>
         </div>
+
+        <section>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            Minha assinatura
+          </h2>
+          {subscription ? (
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-black/5 flex items-center justify-center shrink-0">
+                <CreditCard className="h-5 w-5 text-black" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-900">
+                  {plans.find((p) => p.id === subscription.plan_id)?.name || "Plano"}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {subscription.status === "pending"
+                    ? "Aguardando confirmação do pagamento pelo studio"
+                    : `Próxima cobrança: ${new Date(subscription.next_billing_date + "T12:00:00").toLocaleDateString("pt-BR")}`}
+                </p>
+              </div>
+              {subscription.status === "pending" ? (
+                <Badge className="bg-amber-100 text-amber-700 border-amber-200">Pendente</Badge>
+              ) : (
+                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Ativo</Badge>
+              )}
+            </div>
+          ) : plans.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {plans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className={`bg-white rounded-xl p-5 shadow-sm flex flex-col ${
+                    plan.is_featured ? "border-2 border-black" : "border border-gray-100"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-gray-900">{plan.name}</h3>
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                      {plan.badge}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1 mb-4">
+                    <span className="text-2xl font-bold text-gray-900">R$ {plan.price}</span>
+                    <span className="text-xs text-gray-400">/mês</span>
+                  </div>
+                  <div className="flex-1 space-y-2 mb-4">
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <Check className="h-4 w-4 text-emerald-600 shrink-0" /> {plan.cuts_per_month} cortes/mês
+                    </div>
+                    {plan.beards_per_month > 0 && (
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <Check className="h-4 w-4 text-emerald-600 shrink-0" /> {plan.beards_per_month} barba/mês
+                      </div>
+                    )}
+                    {plan.discount_percent > 0 && (
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <Check className="h-4 w-4 text-emerald-600 shrink-0" /> {plan.discount_percent}% de desconto
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    onClick={() => setSubscribePlan(plan)}
+                    className="w-full rounded-xl bg-black hover:bg-gray-800 text-white"
+                  >
+                    Assinar
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
 
         {upcoming.length > 0 && (
           <section>
@@ -219,6 +326,146 @@ export default function ClientePainel() {
           }}
         />
       )}
+
+      {subscribePlan && client && (
+        <SubscribeDialog
+          plan={subscribePlan}
+          clientId={client.id}
+          onClose={() => setSubscribePlan(null)}
+          onSuccess={() => {
+            setSubscribePlan(null);
+            fetchData();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function SubscribeDialog({
+  plan,
+  clientId,
+  onClose,
+  onSuccess,
+}: {
+  plan: Plan;
+  clientId: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [paymentMethod, setPaymentMethod] = useState("pix");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      const startDate = new Date();
+      const nextBilling = new Date(startDate);
+      nextBilling.setMonth(nextBilling.getMonth() + 1);
+
+      const { error } = await supabase.from("subscriptions").insert({
+        client_id: clientId,
+        plan_id: plan.id,
+        start_date: startDate.toISOString().split("T")[0],
+        next_billing_date: nextBilling.toISOString().split("T")[0],
+        payment_method: paymentMethod,
+        status: "pending",
+      });
+
+      if (error) throw new Error(error.message);
+
+      toast({
+        title: "Assinatura solicitada!",
+        description: "Assim que o studio confirmar o pagamento, sua assinatura fica ativa.",
+      });
+      onSuccess();
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const paymentOptions = [
+    { value: "pix", label: "PIX" },
+    { value: "credit", label: "Cartão de Crédito" },
+    { value: "debit", label: "Cartão de Débito" },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4" style={{ animation: "fadeInScale 0.2s ease-out" }}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-black/5 flex items-center justify-center">
+              <CreditCard className="h-4 w-4 text-black" />
+            </div>
+            <h2 className="text-lg font-bold text-gray-900">Assinar {plan.name}</h2>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <X className="h-4 w-4 text-gray-400" />
+          </button>
+        </div>
+
+        <div className="p-6">
+          <div className="bg-gray-50 rounded-xl p-4 mb-5">
+            <div className="flex items-baseline justify-between mb-3">
+              <span className="font-semibold text-gray-900">{plan.name}</span>
+              <span className="text-lg font-bold text-gray-900">R$ {plan.price}<span className="text-xs font-normal text-gray-400">/mês</span></span>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> {plan.cuts_per_month} cortes/mês
+              </div>
+              {plan.beards_per_month > 0 && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> {plan.beards_per_month} barba/mês
+                </div>
+              )}
+              {plan.discount_percent > 0 && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" /> {plan.discount_percent}% de desconto
+                </div>
+              )}
+            </div>
+          </div>
+
+          <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 block">
+            Forma de pagamento
+          </label>
+          <div className="grid grid-cols-3 gap-2 mb-5">
+            {paymentOptions.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setPaymentMethod(opt.value)}
+                className={`py-2.5 px-2 rounded-xl text-sm font-medium border transition-all ${
+                  paymentMethod === opt.value
+                    ? "bg-black text-white border-black"
+                    : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <p className="text-xs text-gray-400 mb-5">
+            O pagamento é combinado diretamente com o studio. Sua assinatura fica pendente até a confirmação.
+          </p>
+
+          <Button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-full py-3 h-auto rounded-xl font-semibold bg-black hover:bg-gray-800 text-white transition-all hover:-translate-y-0.5 disabled:opacity-50"
+          >
+            {loading ? (
+              <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Solicitando...</>
+            ) : (
+              "Confirmar assinatura"
+            )}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
