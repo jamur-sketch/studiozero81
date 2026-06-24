@@ -75,8 +75,8 @@ export default function ClienteCadastro() {
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-6 md:p-10 bg-white">
-        <div className="w-full max-w-[380px]">
+      <div className="flex-1 flex items-center justify-center p-6 md:p-10 bg-white overflow-y-auto">
+        <div className="w-full max-w-[380px] py-4">
           <div className="flex justify-center mb-10 md:hidden">
             <div className="p-6 rounded-2xl" style={{ backgroundColor: "#000000" }}>
               <img

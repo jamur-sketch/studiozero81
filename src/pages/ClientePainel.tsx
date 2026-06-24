@@ -180,25 +180,29 @@ export default function ClientePainel() {
             Minha assinatura
           </h2>
           {subscription ? (
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-black/5 flex items-center justify-center shrink-0">
-                <CreditCard className="h-5 w-5 text-black" />
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-black/5 flex items-center justify-center shrink-0 mt-0.5">
+                  <CreditCard className="h-5 w-5 text-black" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-gray-900">
+                      {plans.find((p) => p.id === subscription.plan_id)?.name || "Plano"}
+                    </p>
+                    {subscription.status === "pending" ? (
+                      <Badge className="bg-amber-100 text-amber-700 border-amber-200">Pendente</Badge>
+                    ) : (
+                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Ativo</Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {subscription.status === "pending"
+                      ? "Aguardando confirmação do pagamento pelo studio"
+                      : `Próxima cobrança: ${new Date(subscription.next_billing_date + "T12:00:00").toLocaleDateString("pt-BR")}`}
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900">
-                  {plans.find((p) => p.id === subscription.plan_id)?.name || "Plano"}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {subscription.status === "pending"
-                    ? "Aguardando confirmação do pagamento pelo studio"
-                    : `Próxima cobrança: ${new Date(subscription.next_billing_date + "T12:00:00").toLocaleDateString("pt-BR")}`}
-                </p>
-              </div>
-              {subscription.status === "pending" ? (
-                <Badge className="bg-amber-100 text-amber-700 border-amber-200">Pendente</Badge>
-              ) : (
-                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Ativo</Badge>
-              )}
             </div>
           ) : plans.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -253,26 +257,28 @@ export default function ClientePainel() {
             </h2>
             <div className="space-y-3">
               {upcoming.map((b) => (
-                <div key={b.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-black/5 flex items-center justify-center shrink-0">
-                    <Scissors className="h-5 w-5 text-black" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-gray-900">{b.service}</p>
-                      {b.recurring && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-violet-700 bg-violet-100 border border-violet-200 px-2 py-0.5 rounded-full">
-                          <Repeat className="h-3 w-3" /> Horário fixo
-                        </span>
-                      )}
+                <div key={b.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-black/5 flex items-center justify-center shrink-0 mt-0.5">
+                      <Scissors className="h-5 w-5 text-black" />
                     </div>
-                    <p className="text-sm text-gray-500">
-                      {formatDate(b.start_time)} • {formatTime(b.start_time)} - {formatTime(b.end_time)}
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-gray-900">{b.service}</p>
+                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                          Confirmado
+                        </Badge>
+                        {b.recurring && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-violet-700 bg-violet-100 border border-violet-200 px-2 py-0.5 rounded-full">
+                            <Repeat className="h-3 w-3" /> Fixo
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {formatDate(b.start_time)} • {formatTime(b.start_time)} - {formatTime(b.end_time)}
+                      </p>
+                    </div>
                   </div>
-                  <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
-                    Confirmado
-                  </Badge>
                 </div>
               ))}
             </div>
@@ -294,19 +300,23 @@ export default function ClientePainel() {
             </h2>
             <div className="space-y-2">
               {past.slice(0, 10).map((b) => (
-                <div key={b.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex items-center gap-4 opacity-70">
-                  <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-                    <Scissors className="h-4 w-4 text-gray-400" />
+                <div key={b.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 opacity-70">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <Scissors className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-gray-700">{b.service}</p>
+                        <Badge variant="outline" className="text-gray-400 border-gray-200">
+                          {b.status === "cancelled" ? "Cancelado" : "Concluído"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-400 mt-0.5">
+                        {formatDate(b.start_time)} • {formatTime(b.start_time)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-700">{b.service}</p>
-                    <p className="text-sm text-gray-400">
-                      {formatDate(b.start_time)} • {formatTime(b.start_time)}
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="text-gray-400 border-gray-200">
-                    {b.status === "cancelled" ? "Cancelado" : "Concluído"}
-                  </Badge>
                 </div>
               ))}
             </div>
@@ -433,12 +443,12 @@ function SubscribeDialog({
           <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 block">
             Forma de pagamento
           </label>
-          <div className="grid grid-cols-3 gap-2 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-5">
             {paymentOptions.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setPaymentMethod(opt.value)}
-                className={`py-2.5 px-2 rounded-xl text-sm font-medium border transition-all ${
+                className={`py-2.5 px-3 rounded-xl text-sm font-medium border transition-all ${
                   paymentMethod === opt.value
                     ? "bg-black text-white border-black"
                     : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
