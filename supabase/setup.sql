@@ -183,6 +183,46 @@ CREATE TRIGGER update_bookings_updated_at
   BEFORE UPDATE ON public.bookings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- ============================================================
+-- Horários fixos (regras de recorrência semanal)
+-- Guarda a "regra" do horário fixo; as ocorrências reais ficam
+-- na tabela bookings com recurrence_group = recurring_bookings.id.
+-- ============================================================
+CREATE TABLE public.recurring_bookings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id uuid REFERENCES public.clients(id) ON DELETE CASCADE,
+  client_name text NOT NULL,
+  client_phone text NOT NULL,
+  service text NOT NULL,
+  start_date date NOT NULL,
+  time text NOT NULL,
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.recurring_bookings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins can manage recurring bookings" ON public.recurring_bookings
+  FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'))
+  WITH CHECK (public.has_role(auth.uid(), 'admin'));
+CREATE POLICY "Authenticated users can view recurring bookings" ON public.recurring_bookings
+  FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Clients can create their own recurring bookings" ON public.recurring_bookings
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    client_id IN (SELECT id FROM public.clients WHERE user_id = auth.uid())
+  );
+CREATE POLICY "Clients can update their own recurring bookings" ON public.recurring_bookings
+  FOR UPDATE TO authenticated
+  USING (
+    client_id IN (SELECT id FROM public.clients WHERE user_id = auth.uid())
+  );
+
+CREATE TRIGGER update_recurring_bookings_updated_at
+  BEFORE UPDATE ON public.recurring_bookings
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TRIGGER update_app_settings_updated_at
   BEFORE UPDATE ON public.app_settings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

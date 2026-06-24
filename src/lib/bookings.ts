@@ -98,8 +98,20 @@ export async function createBooking(data: {
   return booking;
 }
 
-// Cria um horário fixo: reserva o mesmo dia/horário toda semana por RECURRENCE_WEEKS semanas.
-// Pula automaticamente as semanas em que o horário já estiver ocupado.
+export interface RecurringRule {
+  id: string;
+  client_id: string | null;
+  client_name: string;
+  client_phone: string;
+  service: string;
+  start_date: string;
+  time: string;
+  active: boolean;
+}
+
+// Cria um horário fixo: registra a regra de recorrência e já gera as ocorrências
+// das próximas RECURRENCE_WEEKS semanas. A renovação contínua é feita por
+// ensureRecurringBookings, que mantém a janela sempre cheia.
 export async function createRecurringBooking(data: {
   date: string;
   time: string;
@@ -107,81 +119,134 @@ export async function createRecurringBooking(data: {
   clientName: string;
   clientPhone: string;
   clientId?: string;
-  weeks?: number;
-}): Promise<{ created: number; skipped: number }> {
-  const svc = SERVICES.find((s) => s.name === data.service);
-  const duration = svc?.duration || 45;
-  const price = svc?.price || 0;
-  const weeks = data.weeks ?? RECURRENCE_WEEKS;
-
-  const firstStart = new Date(`${data.date}T${data.time}:00`);
-
-  // Monta as ocorrências semanais.
-  const occurrences = Array.from({ length: weeks }, (_, i) => {
-    const start = new Date(firstStart);
-    start.setDate(start.getDate() + i * 7);
-    const end = new Date(start.getTime() + duration * 60000);
-    return { start, end };
-  });
-
-  const rangeStart = occurrences[0].start.toISOString();
-  const rangeEnd = occurrences[occurrences.length - 1].end.toISOString();
-
-  // Busca agendamentos existentes no intervalo todo para checar conflitos em memória.
-  const { data: existing, error: existingError } = await supabase
-    .from("bookings")
-    .select("start_time, end_time")
-    .gte("start_time", rangeStart)
-    .lte("start_time", rangeEnd)
-    .neq("status", "cancelled");
-
-  if (existingError) throw new Error(existingError.message);
-
-  const group = crypto.randomUUID();
-  const rows: Record<string, any>[] = [];
-  let skipped = 0;
-
-  for (const occ of occurrences) {
-    const conflicts = (existing || []).some((b) => {
-      const bStart = new Date(b.start_time);
-      const bEnd = new Date(b.end_time);
-      return occ.start < bEnd && occ.end > bStart;
-    });
-
-    if (conflicts) {
-      skipped++;
-      continue;
-    }
-
-    rows.push({
+}): Promise<{ created: number }> {
+  const { data: rule, error } = await supabase
+    .from("recurring_bookings")
+    .insert({
+      client_id: data.clientId || null,
       client_name: data.clientName,
       client_phone: data.clientPhone,
-      client_id: data.clientId || null,
       service: data.service,
-      price,
-      start_time: occ.start.toISOString(),
-      end_time: occ.end.toISOString(),
-      status: "confirmed",
-      recurring: true,
-      recurrence_group: group,
-    });
-  }
+      start_date: data.date,
+      time: data.time,
+      active: true,
+    })
+    .select()
+    .single();
 
-  if (rows.length === 0) {
-    throw new Error("Este horário já está ocupado em todas as próximas semanas.");
-  }
+  if (error || !rule) throw new Error(error?.message || "Não foi possível criar o horário fixo.");
 
-  const { error } = await supabase.from("bookings").insert(rows);
-  if (error) throw new Error(error.message);
+  const result = await ensureRecurringBookings({ ruleId: rule.id });
+
+  if (result.created === 0) {
+    throw new Error("Este horário já está ocupado nas próximas semanas.");
+  }
 
   if (data.clientId) {
     await supabase
       .from("clients")
-      .update({ last_booking_date: rows[0].start_time })
+      .update({ last_booking_date: new Date(`${data.date}T${data.time}:00`).toISOString() })
       .eq("id", data.clientId);
   }
 
-  return { created: rows.length, skipped };
+  return result;
+}
+
+// Mantém os horários fixos sempre reservados pelas próximas RECURRENCE_WEEKS semanas.
+// É idempotente: só cria as ocorrências que ainda faltam, pulando conflitos.
+// Roda quando o painel do cliente ou a agenda do admin são abertos.
+export async function ensureRecurringBookings(opts?: {
+  clientId?: string;
+  ruleId?: string;
+}): Promise<{ created: number }> {
+  let query = supabase.from("recurring_bookings").select("*").eq("active", true);
+  if (opts?.ruleId) query = query.eq("id", opts.ruleId);
+  if (opts?.clientId) query = query.eq("client_id", opts.clientId);
+
+  const { data: rules, error } = await query;
+  if (error) throw new Error(error.message);
+  if (!rules || rules.length === 0) return { created: 0 };
+
+  const now = new Date();
+  const windowEnd = new Date(now.getTime() + RECURRENCE_WEEKS * 7 * 24 * 60 * 60 * 1000);
+
+  // Busca tudo que já existe na janela de uma vez para checar conflitos/duplicatas em memória.
+  const { data: existing, error: existingError } = await supabase
+    .from("bookings")
+    .select("start_time, end_time, recurrence_group")
+    .gte("start_time", now.toISOString())
+    .lte("start_time", windowEnd.toISOString())
+    .neq("status", "cancelled");
+
+  if (existingError) throw new Error(existingError.message);
+
+  const rows: Record<string, any>[] = [];
+
+  for (const rule of rules as RecurringRule[]) {
+    const svc = SERVICES.find((s) => s.name === rule.service);
+    const duration = svc?.duration || 45;
+    const price = svc?.price || 0;
+
+    let occ = new Date(`${rule.start_date}T${rule.time}:00`);
+    // Avança até a primeira ocorrência que ainda não passou.
+    while (occ.getTime() < now.getTime()) occ.setDate(occ.getDate() + 7);
+
+    while (occ.getTime() <= windowEnd.getTime()) {
+      const start = new Date(occ);
+      const end = new Date(start.getTime() + duration * 60000);
+
+      const alreadyExists = (existing || []).some(
+        (b) => b.recurrence_group === rule.id && new Date(b.start_time).getTime() === start.getTime(),
+      );
+
+      if (!alreadyExists) {
+        const conflict = (existing || []).some((b) => {
+          if (b.recurrence_group === rule.id) return false;
+          return new Date(b.start_time) < end && new Date(b.end_time) > start;
+        });
+
+        if (!conflict) {
+          rows.push({
+            client_name: rule.client_name,
+            client_phone: rule.client_phone,
+            client_id: rule.client_id,
+            service: rule.service,
+            price,
+            start_time: start.toISOString(),
+            end_time: end.toISOString(),
+            status: "confirmed",
+            recurring: true,
+            recurrence_group: rule.id,
+          });
+        }
+      }
+
+      occ.setDate(occ.getDate() + 7);
+    }
+  }
+
+  if (rows.length === 0) return { created: 0 };
+
+  const { error: insertError } = await supabase.from("bookings").insert(rows);
+  if (insertError) throw new Error(insertError.message);
+
+  return { created: rows.length };
+}
+
+// Encerra um horário fixo: desativa a regra e cancela as ocorrências futuras.
+export async function cancelRecurringSeries(recurrenceGroup: string): Promise<void> {
+  const { error: ruleError } = await supabase
+    .from("recurring_bookings")
+    .update({ active: false })
+    .eq("id", recurrenceGroup);
+  if (ruleError) throw new Error(ruleError.message);
+
+  const { error: bookingsError } = await supabase
+    .from("bookings")
+    .update({ status: "cancelled" })
+    .eq("recurrence_group", recurrenceGroup)
+    .gte("start_time", new Date().toISOString());
+  if (bookingsError) throw new Error(bookingsError.message);
 }
 
 export async function updateBooking(data: {

@@ -23,7 +23,7 @@ import {
   getAvailableTimes,
   createBooking,
   createRecurringBooking,
-  RECURRENCE_WEEKS,
+  ensureRecurringBookings,
   type Booking,
 } from "@/lib/bookings";
 
@@ -53,6 +53,13 @@ export default function ClientePainel() {
 
     if (clientData) {
       setClient(clientData);
+
+      // Renova os horários fixos do cliente (gera as próximas semanas que faltarem).
+      try {
+        await ensureRecurringBookings({ clientId: clientData.id });
+      } catch (err) {
+        console.error("Erro ao renovar horários fixos:", err);
+      }
 
       const { data: bookingData } = await supabase
         .from("bookings")
@@ -263,7 +270,7 @@ function ClientBookingDialog({
     setLoading(true);
     try {
       if (recurring) {
-        const { created, skipped } = await createRecurringBooking({
+        await createRecurringBooking({
           date,
           time: selectedTime,
           service: service as string,
@@ -273,8 +280,7 @@ function ClientBookingDialog({
         });
         toast({
           title: "Horário fixo reservado!",
-          description:
-            `${created} agendamentos criados${skipped > 0 ? ` (${skipped} semana(s) puladas por conflito)` : ""}.`,
+          description: "Este horário agora fica sempre reservado para você toda semana.",
         });
       } else {
         await createBooking({
@@ -476,8 +482,8 @@ function ClientBookingDialog({
                 <div>
                   <p className="text-sm font-semibold text-gray-900">Reservar sempre este horário</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Este horário fica fixo para você toda semana
-                    {" "}({weekdayLabel}, {selectedTime}) pelas próximas {RECURRENCE_WEEKS} semanas.
+                    {weekdayLabel} às {selectedTime} fica fixo para você toda semana,
+                    {" "}renovado automaticamente.
                   </p>
                 </div>
               </button>

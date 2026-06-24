@@ -4,7 +4,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventClickArg, EventDropArg, DateSelectArg } from "@fullcalendar/core";
-import { getBookings, updateBooking, type Booking } from "@/lib/bookings";
+import { getBookings, updateBooking, ensureRecurringBookings, type Booking } from "@/lib/bookings";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
@@ -19,6 +19,7 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
   const [loading, setLoading] = useState(false);
   const calendarRef = useRef<FullCalendar>(null);
   const lastFetchRange = useRef<string>("");
+  const toppedUp = useRef(false);
 
   const fetchEvents = useCallback(async (startStr: string, endStr: string) => {
     const rangeKey = `${startStr}_${endStr}`;
@@ -60,6 +61,27 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
       fetchEvents(start, end);
     }
   }, [refreshKey, fetchEvents]);
+
+  // Renova os horários fixos de todos os clientes ao abrir a agenda.
+  useEffect(() => {
+    if (toppedUp.current) return;
+    toppedUp.current = true;
+    (async () => {
+      try {
+        const { created } = await ensureRecurringBookings();
+        if (created > 0 && calendarRef.current) {
+          const api = calendarRef.current.getApi();
+          const view = api.view;
+          const start = view.activeStart.toISOString().split("T")[0];
+          const end = view.activeEnd.toISOString().split("T")[0];
+          lastFetchRange.current = "";
+          fetchEvents(start, end);
+        }
+      } catch (err) {
+        console.error("Erro ao renovar horários fixos:", err);
+      }
+    })();
+  }, [fetchEvents]);
 
   const handleDatesSet = useCallback((info: any) => {
     const start = info.startStr.split("T")[0];
