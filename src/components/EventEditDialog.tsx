@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { X, Trash2, Save, Phone, User, Clock, Loader2, Scissors } from "lucide-react";
-import { SERVICES, updateBooking, cancelBooking } from "@/lib/bookings";
+import { X, Trash2, Save, Phone, User, Clock, Loader2, Scissors, Repeat, CalendarX } from "lucide-react";
+import { SERVICES, updateBooking, cancelBooking, cancelRecurringSeries } from "@/lib/bookings";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 
@@ -14,6 +14,8 @@ interface EventEditDialogProps {
     description?: string;
     start: string;
     end: string;
+    recurring?: boolean;
+    recurrenceGroup?: string | null;
   } | null;
 }
 
@@ -34,6 +36,7 @@ export function EventEditDialog({ isOpen, onClose, onSuccess, event }: EventEdit
   const [clientPhone, setClientPhone] = useState(parsed.clientPhone);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deletingSeries, setDeletingSeries] = useState(false);
 
   if (event && parsed.clientName !== clientName && !loading) {
     setService(parsed.service);
@@ -70,17 +73,36 @@ export function EventEditDialog({ isOpen, onClose, onSuccess, event }: EventEdit
   };
 
   const handleDelete = async () => {
-    if (!confirm("Tem certeza que deseja excluir este agendamento?")) return;
+    const message = event.recurring
+      ? "Cancelar apenas este dia? As outras semanas do horário fixo continuam."
+      : "Tem certeza que deseja excluir este agendamento?";
+    if (!confirm(message)) return;
     setDeleting(true);
     try {
       await cancelBooking(event.id);
-      toast({ title: "Agendamento excluído com sucesso!" });
+      toast({ title: event.recurring ? "Este dia foi cancelado." : "Agendamento excluído com sucesso!" });
       onSuccess();
       onClose();
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleDeleteSeries = async () => {
+    if (!event.recurrenceGroup) return;
+    if (!confirm("Encerrar este horário fixo? Todos os agendamentos futuros desta recorrência serão cancelados.")) return;
+    setDeletingSeries(true);
+    try {
+      await cancelRecurringSeries(event.recurrenceGroup);
+      toast({ title: "Horário fixo encerrado." });
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setDeletingSeries(false);
     }
   };
 
@@ -114,6 +136,13 @@ export function EventEditDialog({ isOpen, onClose, onSuccess, event }: EventEdit
             <Clock className="h-3.5 w-3.5" />
             <span>{formatDateTime(startDate)} — {formatDateTime(endDate)}</span>
           </div>
+
+          {event.recurring && (
+            <div className="flex items-center gap-2 text-xs font-medium text-violet-700 bg-violet-50 border border-violet-200 px-3 py-2 rounded-lg">
+              <Repeat className="h-3.5 w-3.5" />
+              <span>Horário fixo — repete toda semana automaticamente</span>
+            </div>
+          )}
 
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
@@ -165,27 +194,41 @@ export function EventEditDialog({ isOpen, onClose, onSuccess, event }: EventEdit
             </div>
           </div>
 
-          <div className="flex gap-3 pt-3">
-            <Button
-              variant="outline"
-              onClick={handleDelete}
-              disabled={deleting || loading}
-              className="gap-2 border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground rounded-xl transition-all"
-            >
-              <Trash2 className="h-4 w-4" />
-              {deleting ? "Excluindo..." : "Excluir"}
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={loading || deleting}
-              className="flex-1 gap-2 rounded-xl shadow-lg shadow-primary/15 hover:shadow-xl hover:shadow-primary/25 transition-all hover:-translate-y-0.5"
-            >
-              {loading ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Salvando...</>
-              ) : (
-                <><Save className="h-4 w-4" /> Salvar Alterações</>
-              )}
-            </Button>
+          <div className="space-y-3 pt-3">
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={handleDelete}
+                disabled={deleting || deletingSeries || loading}
+                className="gap-2 border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground rounded-xl transition-all"
+              >
+                <Trash2 className="h-4 w-4" />
+                {deleting ? "Cancelando..." : event.recurring ? "Cancelar só este dia" : "Excluir"}
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={loading || deleting || deletingSeries}
+                className="flex-1 gap-2 rounded-xl shadow-lg shadow-primary/15 hover:shadow-xl hover:shadow-primary/25 transition-all hover:-translate-y-0.5"
+              >
+                {loading ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Salvando...</>
+                ) : (
+                  <><Save className="h-4 w-4" /> Salvar Alterações</>
+                )}
+              </Button>
+            </div>
+
+            {event.recurring && (
+              <Button
+                variant="outline"
+                onClick={handleDeleteSeries}
+                disabled={deleting || deletingSeries || loading}
+                className="w-full gap-2 border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground rounded-xl transition-all"
+              >
+                <CalendarX className="h-4 w-4" />
+                {deletingSeries ? "Encerrando..." : "Encerrar horário fixo (todas as semanas)"}
+              </Button>
+            )}
           </div>
         </div>
       </div>

@@ -9,7 +9,15 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
 interface InteractiveCalendarProps {
-  onEventClick: (event: { id: string; title: string; description?: string; start: string; end: string }) => void;
+  onEventClick: (event: {
+    id: string;
+    title: string;
+    description?: string;
+    start: string;
+    end: string;
+    recurring?: boolean;
+    recurrenceGroup?: string | null;
+  }) => void;
   onDateSelect: (date: string) => void;
   refreshKey: number;
 }
@@ -40,6 +48,8 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
           clientPhone: b.client_phone,
           service: b.service,
           status: b.status,
+          recurring: b.recurring,
+          recurrenceGroup: b.recurrence_group,
         },
       }));
       setEvents(mapped);
@@ -97,6 +107,8 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
       description: evt.extendedProps?.description,
       start: evt.start?.toISOString() || "",
       end: evt.end?.toISOString() || "",
+      recurring: evt.extendedProps?.recurring,
+      recurrenceGroup: evt.extendedProps?.recurrenceGroup,
     });
   }, [onEventClick]);
 

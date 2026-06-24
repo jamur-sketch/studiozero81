@@ -171,12 +171,12 @@ export async function ensureRecurringBookings(opts?: {
   const windowEnd = new Date(now.getTime() + RECURRENCE_WEEKS * 7 * 24 * 60 * 60 * 1000);
 
   // Busca tudo que já existe na janela de uma vez para checar conflitos/duplicatas em memória.
+  // Inclui os cancelados de propósito para não recriar uma semana que foi removida manualmente.
   const { data: existing, error: existingError } = await supabase
     .from("bookings")
-    .select("start_time, end_time, recurrence_group")
+    .select("start_time, end_time, recurrence_group, status")
     .gte("start_time", now.toISOString())
-    .lte("start_time", windowEnd.toISOString())
-    .neq("status", "cancelled");
+    .lte("start_time", windowEnd.toISOString());
 
   if (existingError) throw new Error(existingError.message);
 
@@ -195,6 +195,7 @@ export async function ensureRecurringBookings(opts?: {
       const start = new Date(occ);
       const end = new Date(start.getTime() + duration * 60000);
 
+      // Já existe uma ocorrência desta série nesse horário (mesmo que cancelada de propósito)?
       const alreadyExists = (existing || []).some(
         (b) => b.recurrence_group === rule.id && new Date(b.start_time).getTime() === start.getTime(),
       );
@@ -202,6 +203,7 @@ export async function ensureRecurringBookings(opts?: {
       if (!alreadyExists) {
         const conflict = (existing || []).some((b) => {
           if (b.recurrence_group === rule.id) return false;
+          if (b.status === "cancelled") return false;
           return new Date(b.start_time) < end && new Date(b.end_time) > start;
         });
 

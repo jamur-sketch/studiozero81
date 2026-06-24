@@ -16,6 +16,8 @@ export default function HomePage() {
     description?: string;
     start: string;
     end: string;
+    recurring?: boolean;
+    recurrenceGroup?: string | null;
   } | null>(null);
 
   const today = new Date().toLocaleDateString("pt-BR", {
@@ -30,7 +32,15 @@ export default function HomePage() {
   }, []);
 
   const handleEventClick = useCallback(
-    (event: { id: string; title: string; description?: string; start: string; end: string }) => {
+    (event: {
+      id: string;
+      title: string;
+      description?: string;
+      start: string;
+      end: string;
+      recurring?: boolean;
+      recurrenceGroup?: string | null;
+    }) => {
       setEditEvent(event);
     },
     []
