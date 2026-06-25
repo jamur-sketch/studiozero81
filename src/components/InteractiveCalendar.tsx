@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -6,7 +6,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import type { EventClickArg, EventDropArg, DateSelectArg } from "@fullcalendar/core";
 import { getBookings, updateBooking, ensureRecurringBookings, type Booking } from "@/lib/bookings";
 import { toast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown } from "lucide-react";
 
 interface InteractiveCalendarProps {
   onEventClick: (event: {
@@ -22,12 +22,22 @@ interface InteractiveCalendarProps {
   refreshKey: number;
 }
 
+const VIEW_OPTIONS = [
+  { key: "timeGridDay", label: "Dia" },
+  { key: "timeGridWeek", label: "Semana" },
+  { key: "dayGridMonth", label: "Mês" },
+] as const;
+
 export default function InteractiveCalendar({ onEventClick, onDateSelect, refreshKey }: InteractiveCalendarProps) {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [currentView, setCurrentView] = useState("");
+  const [viewMenuOpen, setViewMenuOpen] = useState(false);
   const calendarRef = useRef<FullCalendar>(null);
   const lastFetchRange = useRef<string>("");
   const toppedUp = useRef(false);
+
+  const isMobile = useMemo(() => window.innerWidth < 768, []);
 
   const fetchEvents = useCallback(async (startStr: string, endStr: string) => {
     const rangeKey = `${startStr}_${endStr}`;
@@ -147,6 +157,20 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
     onDateSelect(dateStr);
   }, [onDateSelect]);
 
+  const handleViewChange = (viewKey: string) => {
+    if (calendarRef.current) {
+      calendarRef.current.getApi().changeView(viewKey);
+      setCurrentView(viewKey);
+    }
+    setViewMenuOpen(false);
+  };
+
+  const handleViewDidMount = useCallback((info: any) => {
+    setCurrentView(info.view.type);
+  }, []);
+
+  const currentViewLabel = VIEW_OPTIONS.find((v) => v.key === currentView)?.label || "Dia";
+
   return (
     <div className="h-full interactive-calendar">
       {loading && (
@@ -155,15 +179,44 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
           Carregando...
         </div>
       )}
+
+      {isMobile && (
+        <div className="relative inline-block mb-2 ml-1">
+          <button
+            onClick={() => setViewMenuOpen((v) => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-foreground bg-secondary border border-border rounded-lg"
+          >
+            {currentViewLabel}
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+          {viewMenuOpen && (
+            <div className="absolute top-full left-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-20 overflow-hidden min-w-[120px]">
+              {VIEW_OPTIONS.map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => handleViewChange(opt.key)}
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                    currentView === opt.key
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : "text-foreground hover:bg-secondary"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView="timeGridWeek"
-        headerToolbar={{
-          left: "prev,next today",
-          center: "title",
-          right: "dayGridMonth,timeGridWeek,timeGridDay",
-        }}
+        initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
+        headerToolbar={isMobile
+          ? { left: "prev,next today", center: "title", right: "" }
+          : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }
+        }
         locale="pt-br"
         timeZone="America/Sao_Paulo"
         slotMinTime="08:00:00"
@@ -179,6 +232,7 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
         eventResizableFromStart={true}
         events={events}
         datesSet={handleDatesSet}
+        viewDidMount={handleViewDidMount}
         eventClick={handleEventClick}
         eventDrop={handleEventDrop}
         eventResize={handleEventResize}

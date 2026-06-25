@@ -3,7 +3,6 @@ import { Users, DollarSign, PieChart, AlertCircle, Pencil, X, Plus, Check, Layer
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import AppLayout from "@/components/AppLayout";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -242,9 +241,7 @@ export default function Assinaturas() {
       <main className="flex-1 bg-gradient-to-br from-secondary via-background to-secondary/50 overflow-auto">
         <div className="p-6 md:p-8 max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger className="md:hidden" />
-              <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 pl-12 md:pl-0">
                 <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
                   <Layers className="h-5 w-5 text-primary-foreground" />
                 </div>
@@ -252,7 +249,6 @@ export default function Assinaturas() {
                   <h1 className="text-2xl font-bold text-foreground tracking-tight">Planos e Assinaturas</h1>
                   <p className="text-muted-foreground text-sm">Gerencie os clientes recorrentes e seus benefícios</p>
                 </div>
-              </div>
             </div>
             <Button onClick={openNewSub} className="gap-2 rounded-xl shadow-lg shadow-primary/20">
               <Plus className="h-4 w-4" /> Nova Assinatura

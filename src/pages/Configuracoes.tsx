@@ -184,7 +184,7 @@ export default function Configuracoes() {
     <AppLayout>
       <div className="flex-1 flex flex-col bg-gradient-to-br from-secondary via-background to-secondary/50">
         <header className="bg-card/80 backdrop-blur-sm border-b border-border/50 px-6 md:px-10 py-5">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 pl-12 md:pl-0">
             <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
               <Settings className="h-5 w-5 text-primary-foreground" />
             </div>

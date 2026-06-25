@@ -204,7 +204,7 @@ export default function ClientesPage() {
       <div className="flex-1 flex flex-col bg-secondary">
         <header className="bg-card border-b border-border px-6 md:px-10 py-5">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="pl-12 md:pl-0">
               <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">
                 Gestão de Clientes
               </h1>

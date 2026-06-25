@@ -8,6 +8,7 @@ import {
   Scissors,
   DollarSign,
   BarChart3,
+  Menu,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -22,6 +23,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { NavLink } from "@/components/NavLink";
 import { Separator } from "@/components/ui/separator";
@@ -122,11 +124,24 @@ function AppSidebar() {
   );
 }
 
+function MobileMenuButton() {
+  const { toggleSidebar } = useSidebar();
+  return (
+    <button
+      onClick={toggleSidebar}
+      className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg"
+    >
+      <Menu className="h-5 w-5" />
+    </button>
+  );
+}
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar />
+        <MobileMenuButton />
         {children}
       </div>
     </SidebarProvider>
