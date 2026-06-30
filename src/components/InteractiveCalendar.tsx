@@ -218,7 +218,7 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
           : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }
         }
         locale="pt-br"
-        timeZone="America/Sao_Paulo"
+        timeZone="local"
         slotMinTime="08:00:00"
         slotMaxTime="21:00:00"
         slotDuration="01:00:00"
