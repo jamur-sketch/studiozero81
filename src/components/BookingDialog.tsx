@@ -28,7 +28,7 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
     setService(svc);
     setLoadingSlots(true);
     try {
-      const slots = await getAvailableTimes(date, svc);
+      const slots = await getAvailableTimes(date, svc, { unrestricted: true });
       setAvailableSlots(slots);
       setStep("time");
     } catch (err: any) {

@@ -289,12 +289,32 @@ export async function cancelBooking(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-export async function getAvailableTimes(date: string, service: string): Promise<{ start: string; end: string }[]> {
+// Janelas de atendimento para o cliente: Segunda a Sexta, manhã e tarde.
+// [início (minutos desde meia-noite), fim (minutos desde meia-noite)]
+const WORKING_WINDOWS = [
+  [9 * 60, 12 * 60], // 09:00 - 12:00
+  [13 * 60, 19 * 60], // 13:00 - 19:00
+] as const;
+
+// Janela ampla usada pelo admin (autonomia total): dia inteiro, qualquer dia.
+const ADMIN_WINDOWS = [[8 * 60, 21 * 60]] as const;
+
+export async function getAvailableTimes(
+  date: string,
+  service: string,
+  opts?: { unrestricted?: boolean },
+): Promise<{ start: string; end: string }[]> {
   const svc = SERVICES.find((s) => s.name === service);
   const duration = svc?.duration || 45;
 
-  const dayStart = `${date}T08:00:00`;
-  const dayEnd = `${date}T21:00:00`;
+  // Cliente: Segunda a Sexta apenas (0 = domingo, 6 = sábado). Admin não tem essa restrição.
+  if (!opts?.unrestricted) {
+    const weekday = new Date(`${date}T12:00:00`).getDay();
+    if (weekday === 0 || weekday === 6) return [];
+  }
+
+  const dayStart = `${date}T00:00:00`;
+  const dayEnd = `${date}T23:59:59`;
 
   const { data: existing, error } = await supabase
     .from("bookings")
@@ -305,16 +325,19 @@ export async function getAvailableTimes(date: string, service: string): Promise<
 
   if (error) throw new Error(error.message);
 
+  const windows = opts?.unrestricted ? ADMIN_WINDOWS : WORKING_WINDOWS;
   const slots: { start: string; end: string }[] = [];
-  const startHour = 8;
-  const endHour = 21;
 
-  for (let h = startHour; h < endHour; h++) {
-    for (let m = 0; m < 60; m += 15) {
+  for (const [windowStart, windowEnd] of windows) {
+    for (let minutes = windowStart; minutes < windowEnd; minutes += 15) {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
       const slotStart = new Date(`${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`);
       const slotEnd = new Date(slotStart.getTime() + duration * 60000);
 
-      if (slotEnd.getHours() >= endHour && slotEnd.getMinutes() > 0) continue;
+      // O atendimento precisa terminar dentro da mesma janela.
+      const slotEndMinutes = minutes + duration;
+      if (slotEndMinutes > windowEnd) continue;
 
       const conflicts = (existing || []).some((b) => {
         const bStart = new Date(b.start_time);

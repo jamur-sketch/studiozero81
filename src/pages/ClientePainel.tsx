@@ -563,6 +563,8 @@ function ClientBookingDialog({
 
   const svcInfo = SERVICES.find((s) => s.name === service);
   const weekdayLabel = new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long" });
+  const selectedWeekday = new Date(date + "T12:00:00").getDay();
+  const isWeekend = selectedWeekday === 0 || selectedWeekday === 6;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -658,7 +660,11 @@ function ClientBookingDialog({
               {availableSlots.length === 0 ? (
                 <div className="text-center py-8">
                   <CalendarDays className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">Nenhum horário disponível nesta data.</p>
+                  <p className="text-sm text-gray-400">
+                    {isWeekend
+                      ? "Não atendemos aos fins de semana. Escolha um dia de segunda a sexta."
+                      : "Nenhum horário disponível nesta data."}
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-3 gap-2 max-h-[280px] overflow-y-auto pr-1">
