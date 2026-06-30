@@ -221,8 +221,10 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
         timeZone="America/Sao_Paulo"
         slotMinTime="08:00:00"
         slotMaxTime="21:00:00"
-        slotDuration="00:15:00"
+        slotDuration="01:00:00"
         slotLabelInterval="01:00:00"
+        snapDuration="00:15:00"
+        expandRows={true}
         allDaySlot={false}
         hiddenDays={[0]}
         editable={true}
