@@ -8,7 +8,7 @@ import listPlugin from "@fullcalendar/list";
 import type { EventClickArg, EventDropArg, DateSelectArg } from "@fullcalendar/core";
 import { getBookings, updateBooking, ensureRecurringBookings, type Booking } from "@/lib/bookings";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, ChevronDown } from "lucide-react";
+import { Loader2, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface InteractiveCalendarProps {
   onEventClick: (event: {
@@ -185,31 +185,57 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
       )}
 
       {isMobile && (
-        <div className="relative inline-block mb-2 ml-1">
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <div className="relative">
+            <button
+              onClick={() => setViewMenuOpen((v) => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-foreground bg-secondary border border-border rounded-lg"
+            >
+              {currentViewLabel}
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+            {viewMenuOpen && (
+              <div className="absolute top-full left-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-20 overflow-hidden min-w-[120px]">
+                {VIEW_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.key}
+                    onClick={() => handleViewChange(opt.key)}
+                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                      currentView === opt.key
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 ml-auto">
+            <button
+              onClick={() => calendarRef.current?.getApi().prev()}
+              className="w-9 h-9 flex items-center justify-center rounded-lg bg-primary text-primary-foreground"
+              aria-label="Anterior"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => calendarRef.current?.getApi().next()}
+              className="w-9 h-9 flex items-center justify-center rounded-lg bg-primary text-primary-foreground"
+              aria-label="Próximo"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
           <button
-            onClick={() => setViewMenuOpen((v) => !v)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-foreground bg-secondary border border-border rounded-lg"
+            onClick={() => calendarRef.current?.getApi().today()}
+            className="px-3 py-1.5 text-sm font-medium rounded-lg bg-secondary border border-border text-foreground"
           >
-            {currentViewLabel}
-            <ChevronDown className="h-3.5 w-3.5" />
+            Hoje
           </button>
-          {viewMenuOpen && (
-            <div className="absolute top-full left-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-20 overflow-hidden min-w-[120px]">
-              {VIEW_OPTIONS.map((opt) => (
-                <button
-                  key={opt.key}
-                  onClick={() => handleViewChange(opt.key)}
-                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                    currentView === opt.key
-                      ? "bg-primary text-primary-foreground font-semibold"
-                      : "text-foreground hover:bg-secondary"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
@@ -218,7 +244,7 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, luxonPlugin, listPlugin]}
         initialView={isMobile ? "listDay" : "timeGridWeek"}
         headerToolbar={isMobile
-          ? { left: "prev,next today", center: "title", right: "" }
+          ? { left: "", center: "title", right: "" }
           : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }
         }
         locale="pt-br"
