@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Search, Plus, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Search, Plus, Eye, Pencil, Trash2, ChevronLeft, ChevronRight, X, KeyRound } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -195,6 +195,27 @@ export default function ClientesPage() {
       }
     }
     setSaving(false);
+  };
+
+  const [resetting, setResetting] = useState(false);
+
+  const handleResetPassword = async () => {
+    if (!selectedClient?.email) return;
+    setResetting(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(selectedClient.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast({
+        title: "Link de redefinição enviado!",
+        description: `Enviamos um e-mail para ${selectedClient.email} com o link para criar uma nova senha.`,
+      });
+    } catch (err: any) {
+      toast({ title: "Erro ao enviar redefinição", description: err.message, variant: "destructive" });
+    } finally {
+      setResetting(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -401,6 +422,34 @@ export default function ClientesPage() {
               <Label htmlFor="email">E-mail</Label>
               <Input id="email" type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} placeholder="email@exemplo.com" />
             </div>
+
+            {editMode && (
+              <div className="border-t border-border/60 pt-4">
+                <Label className="mb-1.5 block">Acesso do cliente</Label>
+                {selectedClient?.user_id && selectedClient?.email ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={handleResetPassword}
+                      disabled={resetting}
+                      className="gap-2"
+                    >
+                      <KeyRound className="h-4 w-4" />
+                      {resetting ? "Enviando..." : "Resetar senha do cliente"}
+                    </Button>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Enviamos um e-mail para o cliente com um link para ele criar uma nova senha.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedClient?.email
+                      ? "Este cliente ainda não criou uma conta de acesso, então não há senha para redefinir."
+                      : "Adicione um e-mail e salve para que o cliente possa criar uma conta de acesso."}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddModalOpen(false)}>Cancelar</Button>
