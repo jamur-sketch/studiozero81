@@ -3,6 +3,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import luxonPlugin from "@fullcalendar/luxon3";
 import type { EventClickArg, EventDropArg, DateSelectArg } from "@fullcalendar/core";
 import { getBookings, updateBooking, ensureRecurringBookings, type Booking } from "@/lib/bookings";
 import { toast } from "@/hooks/use-toast";
@@ -211,14 +212,14 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
 
       <FullCalendar
         ref={calendarRef}
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, luxonPlugin]}
         initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
         headerToolbar={isMobile
           ? { left: "prev,next today", center: "title", right: "" }
           : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }
         }
         locale="pt-br"
-        timeZone="local"
+        timeZone="America/Sao_Paulo"
         slotMinTime="08:00:00"
         slotMaxTime="21:00:00"
         slotDuration="01:00:00"
