@@ -4,6 +4,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import luxonPlugin from "@fullcalendar/luxon3";
+import listPlugin from "@fullcalendar/list";
 import type { EventClickArg, EventDropArg, DateSelectArg } from "@fullcalendar/core";
 import { getBookings, updateBooking, ensureRecurringBookings, type Booking } from "@/lib/bookings";
 import { toast } from "@/hooks/use-toast";
@@ -23,9 +24,11 @@ interface InteractiveCalendarProps {
   refreshKey: number;
 }
 
+// Opções do seletor de visualização no mobile. "Agenda" (lista) é o padrão.
 const VIEW_OPTIONS = [
-  { key: "timeGridDay", label: "Dia" },
-  { key: "timeGridWeek", label: "Semana" },
+  { key: "listWeek", label: "Agenda" },
+  { key: "timeGridDay", label: "Calendário (dia)" },
+  { key: "timeGridWeek", label: "Calendário (semana)" },
   { key: "dayGridMonth", label: "Mês" },
 ] as const;
 
@@ -170,7 +173,7 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
     setCurrentView(info.view.type);
   }, []);
 
-  const currentViewLabel = VIEW_OPTIONS.find((v) => v.key === currentView)?.label || "Dia";
+  const currentViewLabel = VIEW_OPTIONS.find((v) => v.key === currentView)?.label || "Agenda";
 
   return (
     <div className="h-full interactive-calendar">
@@ -212,8 +215,8 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
 
       <FullCalendar
         ref={calendarRef}
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, luxonPlugin]}
-        initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, luxonPlugin, listPlugin]}
+        initialView={isMobile ? "listWeek" : "timeGridWeek"}
         headerToolbar={isMobile
           ? { left: "prev,next today", center: "title", right: "" }
           : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }
@@ -247,7 +250,9 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
           month: "Mês",
           week: "Semana",
           day: "Dia",
+          list: "Agenda",
         }}
+        noEventsContent="Nenhum agendamento nesta semana"
       />
     </div>
   );
