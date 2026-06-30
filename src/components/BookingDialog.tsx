@@ -1,8 +1,15 @@
-import { useState } from "react";
-import { X, Clock, User, Phone, ChevronLeft, Loader2, CalendarDays, Scissors } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, Clock, User, Phone, Mail, Search, UserPlus, Check, ChevronLeft, Loader2, CalendarDays, Scissors } from "lucide-react";
 import { SERVICES, type ServiceName, getAvailableTimes, createBooking } from "@/lib/bookings";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+
+interface ClientOption {
+  id: string;
+  name: string;
+  phone: string | null;
+}
 
 interface BookingDialogProps {
   isOpen: boolean;
@@ -16,13 +23,36 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
   const [service, setService] = useState<ServiceName | "">("");
   const [availableSlots, setAvailableSlots] = useState<{ start: string; end: string }[]>([]);
   const [selectedTime, setSelectedTime] = useState("");
-  const [clientName, setClientName] = useState("");
-  const [clientPhone, setClientPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
+  // Seleção / cadastro de cliente
+  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [clientSearch, setClientSearch] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [creatingNew, setCreatingNew] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+
   const today = new Date().toISOString().split("T")[0];
   const [date, setDate] = useState(selectedDate || today);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    supabase
+      .from("clients")
+      .select("id, name, phone")
+      .order("name")
+      .then(({ data }) => setClients(data || []));
+  }, [isOpen]);
+
+  const selectedClient = clients.find((c) => c.id === selectedClientId) || null;
+  const filteredClients = clients.filter((c) => {
+    const q = clientSearch.trim().toLowerCase();
+    if (!q) return true;
+    return c.name.toLowerCase().includes(q) || (c.phone || "").toLowerCase().includes(q);
+  });
 
   const handleSelectService = async (svc: ServiceName) => {
     setService(svc);
@@ -44,18 +74,43 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
   };
 
   const handleSubmit = async () => {
-    if (!clientName.trim() || !clientPhone.trim()) {
-      toast({ title: "Preencha todos os campos", variant: "destructive" });
+    if (creatingNew && !newName.trim()) {
+      toast({ title: "Informe o nome do cliente", variant: "destructive" });
+      return;
+    }
+    if (!creatingNew && !selectedClientId) {
+      toast({ title: "Selecione um cliente ou cadastre um novo", variant: "destructive" });
       return;
     }
     setLoading(true);
     try {
+      let clientId = selectedClientId;
+      let name = selectedClient?.name || "";
+      let phone = selectedClient?.phone || "";
+
+      if (creatingNew) {
+        const { data, error } = await supabase
+          .from("clients")
+          .insert({
+            name: newName.trim(),
+            phone: newPhone.trim() || null,
+            email: newEmail.trim() || null,
+          })
+          .select("id, name, phone")
+          .single();
+        if (error) throw new Error(error.message);
+        clientId = data.id;
+        name = data.name;
+        phone = data.phone || "";
+      }
+
       await createBooking({
         date,
         time: selectedTime,
         service: service as string,
-        clientName: clientName.trim(),
-        clientPhone: clientPhone.trim(),
+        clientName: name,
+        clientPhone: phone,
+        clientId: clientId || undefined,
       });
       toast({ title: "Agendamento criado com sucesso!" });
       resetAndClose();
@@ -71,8 +126,12 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
     setStep("service");
     setService("");
     setSelectedTime("");
-    setClientName("");
-    setClientPhone("");
+    setClientSearch("");
+    setSelectedClientId(null);
+    setCreatingNew(false);
+    setNewName("");
+    setNewPhone("");
+    setNewEmail("");
     setAvailableSlots([]);
     onClose();
   };
@@ -249,32 +308,103 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
                 {service} - {selectedTime} - {new Date(date + "T12:00:00").toLocaleDateString("pt-BR")}
               </div>
 
-              <div className="space-y-3">
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Nome do cliente"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    className="w-full pl-10 pr-3 py-3 border border-input rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary transition-all text-sm"
-                  />
+              {!creatingNew ? (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Buscar cliente por nome ou telefone"
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                      className="w-full pl-10 pr-3 py-3 border border-input rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary transition-all text-sm"
+                    />
+                  </div>
+
+                  <div className="max-h-[220px] overflow-y-auto rounded-xl border border-border/60 divide-y divide-border/40">
+                    {filteredClients.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                        Nenhum cliente encontrado.
+                      </div>
+                    ) : (
+                      filteredClients.map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => setSelectedClientId(c.id)}
+                          className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors ${
+                            selectedClientId === c.id ? "bg-primary/5" : "hover:bg-accent"
+                          }`}
+                        >
+                          <div className="min-w-0">
+                            <span className="block text-sm font-medium text-foreground truncate">{c.name}</span>
+                            <span className="block text-xs text-muted-foreground truncate">{c.phone || "Sem telefone"}</span>
+                          </div>
+                          {selectedClientId === c.id && <Check className="h-4 w-4 text-primary shrink-0" />}
+                        </button>
+                      ))
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setCreatingNew(true);
+                      setSelectedClientId(null);
+                      setNewName(clientSearch.trim());
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-3 border border-dashed border-border rounded-xl text-sm font-medium text-foreground hover:bg-accent transition-colors"
+                  >
+                    <UserPlus className="h-4 w-4" /> Cadastrar novo cliente
+                  </button>
                 </div>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <input
-                    type="tel"
-                    placeholder="Telefone"
-                    value={clientPhone}
-                    onChange={(e) => setClientPhone(e.target.value)}
-                    className="w-full pl-10 pr-3 py-3 border border-input rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary transition-all text-sm"
-                  />
+              ) : (
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setCreatingNew(false)}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <ChevronLeft className="h-3 w-3" /> Escolher cliente existente
+                  </button>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Nome do cliente"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      className="w-full pl-10 pr-3 py-3 border border-input rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary transition-all text-sm"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="tel"
+                      placeholder="Telefone"
+                      value={newPhone}
+                      onChange={(e) => setNewPhone(e.target.value)}
+                      className="w-full pl-10 pr-3 py-3 border border-input rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary transition-all text-sm"
+                    />
+                  </div>
+                  <div>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <input
+                        type="email"
+                        placeholder="E-mail (opcional)"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        className="w-full pl-10 pr-3 py-3 border border-input rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary transition-all text-sm"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1.5 ml-1">
+                      O e-mail é opcional. Depois serve para enviar o acesso ao cliente.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <Button
                 onClick={handleSubmit}
-                disabled={loading}
+                disabled={loading || (!creatingNew && !selectedClientId) || (creatingNew && !newName.trim())}
                 className="w-full mt-5 py-3 h-auto rounded-xl font-semibold shadow-lg shadow-primary/15 hover:shadow-xl hover:shadow-primary/25 transition-all hover:-translate-y-0.5 disabled:opacity-50"
               >
                 {loading ? (
