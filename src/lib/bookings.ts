@@ -347,6 +347,64 @@ export async function getOwingBookings(): Promise<
   return data || [];
 }
 
+export interface CashClosure {
+  id: string;
+  closure_date: string;
+  total_received: number;
+  total_cash: number;
+  total_pix: number;
+  total_credit: number;
+  total_debit: number;
+  total_owing: number;
+  total_pending: number;
+  appointments_count: number;
+  closed_at: string;
+}
+
+// Grava (ou atualiza) o fechamento de caixa de um dia.
+export async function saveCashClosure(data: {
+  date: string;
+  totalReceived: number;
+  totalCash: number;
+  totalPix: number;
+  totalCredit: number;
+  totalDebit: number;
+  totalOwing: number;
+  totalPending: number;
+  appointmentsCount: number;
+}): Promise<void> {
+  const { error } = await supabase
+    .from("cash_closures")
+    .upsert(
+      {
+        closure_date: data.date,
+        total_received: data.totalReceived,
+        total_cash: data.totalCash,
+        total_pix: data.totalPix,
+        total_credit: data.totalCredit,
+        total_debit: data.totalDebit,
+        total_owing: data.totalOwing,
+        total_pending: data.totalPending,
+        appointments_count: data.appointmentsCount,
+        closed_at: new Date().toISOString(),
+      },
+      { onConflict: "closure_date" },
+    );
+
+  if (error) throw new Error(error.message);
+}
+
+export async function getCashClosures(limit = 30): Promise<CashClosure[]> {
+  const { data, error } = await supabase
+    .from("cash_closures")
+    .select("*")
+    .order("closure_date", { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
 export async function cancelBooking(id: string): Promise<void> {
   const { error } = await supabase
     .from("bookings")

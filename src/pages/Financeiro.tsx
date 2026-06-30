@@ -18,9 +18,12 @@ import {
   getDayBookings,
   setBookingPayment,
   paymentMethodLabel,
+  saveCashClosure,
+  getCashClosures,
   PAYMENT_METHODS,
   type Booking,
   type PaymentMethod,
+  type CashClosure,
 } from "@/lib/bookings";
 import { toast } from "@/hooks/use-toast";
 
@@ -38,11 +41,17 @@ export default function FinanceiroPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Booking | null>(null);
   const [closingOpen, setClosingOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [closures, setClosures] = useState<CashClosure[]>([]);
 
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
+
+  useEffect(() => {
+    loadClosures();
+  }, []);
 
   async function fetchData() {
     setLoading(true);
@@ -53,6 +62,14 @@ export default function FinanceiroPage() {
       toast({ title: "Erro ao carregar caixa", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadClosures() {
+    try {
+      setClosures(await getCashClosures());
+    } catch {
+      // silencioso: histórico é secundário
     }
   }
 
@@ -87,6 +104,30 @@ export default function FinanceiroPage() {
       fetchData();
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleConfirmClosure = async () => {
+    setSaving(true);
+    try {
+      await saveCashClosure({
+        date,
+        totalReceived: received,
+        totalCash: byMethod.find((m) => m.key === "cash")?.total || 0,
+        totalPix: byMethod.find((m) => m.key === "pix")?.total || 0,
+        totalCredit: byMethod.find((m) => m.key === "credit")?.total || 0,
+        totalDebit: byMethod.find((m) => m.key === "debit")?.total || 0,
+        totalOwing: owingTotal,
+        totalPending: pendingTotal,
+        appointmentsCount: bookings.length,
+      });
+      toast({ title: "Caixa fechado!", description: "O fechamento foi salvo no histórico." });
+      setClosingOpen(false);
+      loadClosures();
+    } catch (err: any) {
+      toast({ title: "Erro ao fechar caixa", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -169,6 +210,36 @@ export default function FinanceiroPage() {
               </div>
             )}
           </div>
+
+          {closures.length > 0 && (
+            <div className="bg-card rounded-2xl shadow-sm overflow-hidden border border-border/40">
+              <div className="p-5 border-b border-border">
+                <h2 className="font-semibold text-foreground">Histórico de fechamentos</h2>
+              </div>
+              <div className="divide-y divide-border/40">
+                {closures.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between gap-4 px-5 py-3.5">
+                    <div className="min-w-0">
+                      <span className="block text-sm font-medium text-foreground">
+                        {new Date(c.closure_date + "T12:00:00").toLocaleDateString("pt-BR", {
+                          weekday: "short",
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        })}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {c.appointments_count} atend. · {c.total_owing > 0 ? `R$ ${c.total_owing.toFixed(2)} em aberto` : "sem pendências"}
+                      </span>
+                    </div>
+                    <span className="text-sm font-semibold text-emerald-600 shrink-0">
+                      R$ {c.total_received.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </main>
       </div>
 
@@ -189,6 +260,8 @@ export default function FinanceiroPage() {
           byMethod={byMethod}
           owingList={owing}
           pendingCount={pending.length}
+          saving={saving}
+          onConfirm={handleConfirmClosure}
           onClose={() => setClosingOpen(false)}
         />
       )}
@@ -301,6 +374,8 @@ function ClosingDialog({
   byMethod,
   owingList,
   pendingCount,
+  saving,
+  onConfirm,
   onClose,
 }: {
   dateLabel: string;
@@ -310,6 +385,8 @@ function ClosingDialog({
   byMethod: { key: string; label: string; total: number }[];
   owingList: Booking[];
   pendingCount: number;
+  saving: boolean;
+  onConfirm: () => void;
   onClose: () => void;
 }) {
   return (
@@ -368,9 +445,16 @@ function ClosingDialog({
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-border/50">
-          <Button onClick={onClose} className="w-full rounded-xl">
-            Fechar
+        <div className="px-6 py-4 border-t border-border/50 flex gap-3">
+          <Button variant="outline" onClick={onClose} disabled={saving} className="rounded-xl">
+            Cancelar
+          </Button>
+          <Button onClick={onConfirm} disabled={saving} className="flex-1 gap-2 rounded-xl">
+            {saving ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Salvando...</>
+            ) : (
+              "Confirmar fechamento"
+            )}
           </Button>
         </div>
       </div>
