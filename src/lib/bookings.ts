@@ -394,6 +394,18 @@ export async function saveCashClosure(data: {
   if (error) throw new Error(error.message);
 }
 
+// Retorna os client_ids que têm uma assinatura ativa.
+// Atendimentos desses clientes são cobertos pela mensalidade (valor zero no caixa).
+export async function getActiveSubscriberIds(): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .select("client_id")
+    .eq("status", "active");
+
+  if (error) throw new Error(error.message);
+  return new Set((data || []).map((r) => r.client_id as string));
+}
+
 export async function getCashClosures(limit = 30): Promise<CashClosure[]> {
   const { data, error } = await supabase
     .from("cash_closures")

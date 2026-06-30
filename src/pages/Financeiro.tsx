@@ -11,6 +11,7 @@ import {
   Banknote,
   CreditCard,
   Smartphone,
+  Crown,
 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import {
   paymentMethodLabel,
   saveCashClosure,
   getCashClosures,
+  getActiveSubscriberIds,
   PAYMENT_METHODS,
   type Booking,
   type PaymentMethod,
@@ -43,11 +45,16 @@ export default function FinanceiroPage() {
   const [closingOpen, setClosingOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [closures, setClosures] = useState<CashClosure[]>([]);
+  const [subscriberIds, setSubscriberIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
+
+  useEffect(() => {
+    getActiveSubscriberIds().then(setSubscriberIds).catch(() => {});
+  }, []);
 
   useEffect(() => {
     loadClosures();
@@ -73,9 +80,15 @@ export default function FinanceiroPage() {
     }
   }
 
-  const paid = bookings.filter((b) => b.payment_status === "paid");
-  const owing = bookings.filter((b) => b.payment_status === "owing");
-  const pending = bookings.filter((b) => b.payment_status === "pending");
+  const isSubscriber = (b: Booking) => !!b.client_id && subscriberIds.has(b.client_id);
+
+  // Assinantes: cobertos pela mensalidade, não entram no caixa do dia.
+  const subscriberBookings = bookings.filter(isSubscriber);
+  const cashable = bookings.filter((b) => !isSubscriber(b));
+
+  const paid = cashable.filter((b) => b.payment_status === "paid");
+  const owing = cashable.filter((b) => b.payment_status === "owing");
+  const pending = cashable.filter((b) => b.payment_status === "pending");
 
   const received = paid.reduce((s, b) => s + (b.price || 0), 0);
   const owingTotal = owing.reduce((s, b) => s + (b.price || 0), 0);
@@ -188,25 +201,38 @@ export default function FinanceiroPage() {
               <p className="text-muted-foreground text-center py-12">Nenhum atendimento neste dia.</p>
             ) : (
               <div className="divide-y divide-border/40">
-                {bookings.map((b) => (
-                  <button
-                    key={b.id}
-                    onClick={() => setSelected(b)}
-                    className="w-full flex items-center justify-between gap-4 px-5 py-4 hover:bg-muted/30 transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-4 min-w-0">
-                      <span className="text-sm font-medium text-muted-foreground w-12 shrink-0">{formatTime(b.start_time)}</span>
-                      <div className="min-w-0">
-                        <span className="block text-sm font-semibold text-foreground truncate">{b.client_name}</span>
-                        <span className="block text-xs text-muted-foreground truncate">{b.service}</span>
+                {bookings.map((b) => {
+                  const subscriber = isSubscriber(b);
+                  return (
+                    <button
+                      key={b.id}
+                      onClick={() => !subscriber && setSelected(b)}
+                      className={`w-full flex items-center justify-between gap-4 px-5 py-4 transition-colors text-left ${
+                        subscriber ? "cursor-default" : "hover:bg-muted/30"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4 min-w-0">
+                        <span className="text-sm font-medium text-muted-foreground w-12 shrink-0">{formatTime(b.start_time)}</span>
+                        <div className="min-w-0">
+                          <span className="block text-sm font-semibold text-foreground truncate">{b.client_name}</span>
+                          <span className="block text-xs text-muted-foreground truncate">{b.service}</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-sm font-semibold text-foreground">R$ {(b.price || 0).toFixed(2)}</span>
-                      <PaymentBadge booking={b} />
-                    </div>
-                  </button>
-                ))}
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className={`text-sm font-semibold ${subscriber ? "text-muted-foreground" : "text-foreground"}`}>
+                          R$ {(subscriber ? 0 : b.price || 0).toFixed(2)}
+                        </span>
+                        {subscriber ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium bg-violet-100 text-violet-700 px-2.5 py-1 rounded-full">
+                            <Crown className="h-3.5 w-3.5" /> Assinatura
+                          </span>
+                        ) : (
+                          <PaymentBadge booking={b} />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -260,6 +286,7 @@ export default function FinanceiroPage() {
           byMethod={byMethod}
           owingList={owing}
           pendingCount={pending.length}
+          subscriberCount={subscriberBookings.length}
           saving={saving}
           onConfirm={handleConfirmClosure}
           onClose={() => setClosingOpen(false)}
@@ -374,6 +401,7 @@ function ClosingDialog({
   byMethod,
   owingList,
   pendingCount,
+  subscriberCount,
   saving,
   onConfirm,
   onClose,
@@ -385,6 +413,7 @@ function ClosingDialog({
   byMethod: { key: string; label: string; total: number }[];
   owingList: Booking[];
   pendingCount: number;
+  subscriberCount: number;
   saving: boolean;
   onConfirm: () => void;
   onClose: () => void;
@@ -440,6 +469,14 @@ function ClosingDialog({
                   <Clock className="h-4 w-4" /> Sem registro ({pendingCount})
                 </span>
                 <span className="font-semibold text-amber-600">R$ {pendingTotal.toFixed(2)}</span>
+              </div>
+            )}
+            {subscriberCount > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-1.5 text-violet-600 font-medium">
+                  <Crown className="h-4 w-4" /> Cobertos por assinatura
+                </span>
+                <span className="font-semibold text-violet-600">{subscriberCount}</span>
               </div>
             )}
           </div>
