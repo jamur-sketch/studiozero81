@@ -162,6 +162,8 @@ CREATE TABLE public.bookings (
   status text NOT NULL DEFAULT 'confirmed',
   recurring boolean NOT NULL DEFAULT false,
   recurrence_group uuid,
+  payment_method text,
+  payment_status text NOT NULL DEFAULT 'pending',
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );

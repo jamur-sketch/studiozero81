@@ -30,6 +30,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import AppLayout from "@/components/AppLayout";
+import { getOwingBookings } from "@/lib/bookings";
 import { toast } from "@/hooks/use-toast";
 
 interface Client {
@@ -63,9 +64,19 @@ export default function ClientesPage() {
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
+  const [owingIds, setOwingIds] = useState<Set<string>>(new Set());
+  const [owingNames, setOwingNames] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     fetchClients();
+    getOwingBookings().then((rows) => {
+      setOwingIds(new Set(rows.filter((r) => r.client_id).map((r) => r.client_id as string)));
+      setOwingNames(new Set(rows.map((r) => r.client_name.trim().toLowerCase())));
+    });
   }, []);
+
+  const clientOwes = (client: Client) =>
+    owingIds.has(client.id) || owingNames.has(client.name.trim().toLowerCase());
 
   async function fetchClients() {
     setLoading(true);
@@ -274,6 +285,11 @@ export default function ClientesPage() {
                             {client.user_id && (
                               <Badge variant="outline" className="ml-2 text-[10px] py-0">
                                 Cadastrado
+                              </Badge>
+                            )}
+                            {clientOwes(client) && (
+                              <Badge className="ml-2 text-[10px] py-0 bg-red-100 text-red-700 border-red-200">
+                                Devendo
                               </Badge>
                             )}
                           </TableCell>

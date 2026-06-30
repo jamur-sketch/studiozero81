@@ -21,8 +21,24 @@ export interface Booking {
   status: string;
   recurring: boolean;
   recurrence_group: string | null;
+  payment_method: string | null;
+  payment_status: string;
   created_at: string;
   updated_at: string;
+}
+
+export type PaymentMethod = "cash" | "pix" | "credit" | "debit";
+export type PaymentStatus = "pending" | "paid" | "owing";
+
+export const PAYMENT_METHODS: { key: PaymentMethod; label: string }[] = [
+  { key: "cash", label: "Dinheiro" },
+  { key: "pix", label: "PIX" },
+  { key: "credit", label: "Cartão de Crédito" },
+  { key: "debit", label: "Cartão de Débito" },
+];
+
+export function paymentMethodLabel(method: string | null): string {
+  return PAYMENT_METHODS.find((m) => m.key === method)?.label || "—";
 }
 
 // Quantas semanas à frente um horário fixo (recorrente) é reservado de uma vez.
@@ -280,6 +296,55 @@ export async function updateBooking(data: {
     .eq("id", data.id);
 
   if (error) throw new Error(error.message);
+}
+
+// Busca os agendamentos de um único dia (para o controle de caixa).
+export async function getDayBookings(date: string): Promise<Booking[]> {
+  const dayStart = `${date}T00:00:00`;
+  const dayEnd = `${date}T23:59:59`;
+
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("*")
+    .gte("start_time", dayStart)
+    .lte("start_time", dayEnd)
+    .neq("status", "cancelled")
+    .order("start_time");
+
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+// Registra como o agendamento foi pago (ou marca que ficou devendo).
+export async function setBookingPayment(
+  id: string,
+  paymentStatus: PaymentStatus,
+  paymentMethod?: PaymentMethod | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from("bookings")
+    .update({
+      payment_status: paymentStatus,
+      payment_method: paymentStatus === "paid" ? paymentMethod ?? null : null,
+    })
+    .eq("id", id);
+
+  if (error) throw new Error(error.message);
+}
+
+// Retorna os agendamentos que ficaram "devendo" (pendência financeira).
+// Usado para avisar o admin quando um cliente devedor agenda de novo.
+export async function getOwingBookings(): Promise<
+  { client_id: string | null; client_name: string; price: number }[]
+> {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("client_id, client_name, price")
+    .eq("payment_status", "owing")
+    .neq("status", "cancelled");
+
+  if (error) throw new Error(error.message);
+  return data || [];
 }
 
 export async function cancelBooking(id: string): Promise<void> {

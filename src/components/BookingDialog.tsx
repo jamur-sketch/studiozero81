@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { X, Clock, User, Phone, Mail, Search, UserPlus, Check, ChevronLeft, Loader2, CalendarDays, Scissors } from "lucide-react";
-import { SERVICES, type ServiceName, getAvailableTimes, createBooking } from "@/lib/bookings";
+import { X, Clock, User, Phone, Mail, Search, UserPlus, Check, ChevronLeft, Loader2, CalendarDays, Scissors, AlertCircle } from "lucide-react";
+import { SERVICES, type ServiceName, getAvailableTimes, createBooking, getOwingBookings } from "@/lib/bookings";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,9 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
   const today = new Date().toISOString().split("T")[0];
   const [date, setDate] = useState(selectedDate || today);
 
+  const [owingIds, setOwingIds] = useState<Set<string>>(new Set());
+  const [owingNames, setOwingNames] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     if (!isOpen) return;
     supabase
@@ -45,7 +48,14 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
       .select("id, name, phone")
       .order("name")
       .then(({ data }) => setClients(data || []));
+    getOwingBookings().then((rows) => {
+      setOwingIds(new Set(rows.filter((r) => r.client_id).map((r) => r.client_id as string)));
+      setOwingNames(new Set(rows.map((r) => r.client_name.trim().toLowerCase())));
+    });
   }, [isOpen]);
+
+  const clientOwes = (c: ClientOption) =>
+    owingIds.has(c.id) || owingNames.has(c.name.trim().toLowerCase());
 
   const selectedClient = clients.find((c) => c.id === selectedClientId) || null;
   const filteredClients = clients.filter((c) => {
@@ -336,7 +346,14 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
                           }`}
                         >
                           <div className="min-w-0">
-                            <span className="block text-sm font-medium text-foreground truncate">{c.name}</span>
+                            <span className="flex items-center gap-2 text-sm font-medium text-foreground truncate">
+                              {c.name}
+                              {clientOwes(c) && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full shrink-0">
+                                  <AlertCircle className="h-3 w-3" /> Devendo
+                                </span>
+                              )}
+                            </span>
                             <span className="block text-xs text-muted-foreground truncate">{c.phone || "Sem telefone"}</span>
                           </div>
                           {selectedClientId === c.id && <Check className="h-4 w-4 text-primary shrink-0" />}
@@ -399,6 +416,13 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
                       O e-mail é opcional. Depois serve para enviar o acesso ao cliente.
                     </p>
                   </div>
+                </div>
+              )}
+
+              {selectedClient && clientOwes(selectedClient) && (
+                <div className="flex items-start gap-2 mt-4 text-xs font-medium text-red-700 bg-red-50 border border-red-200 px-3 py-2.5 rounded-xl">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>Atenção: este cliente está com pagamento em aberto (devendo) de um atendimento anterior.</span>
                 </div>
               )}
 
