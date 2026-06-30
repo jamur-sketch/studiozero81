@@ -256,6 +256,7 @@ export async function updateBooking(data: {
   service?: string;
   clientName?: string;
   clientPhone?: string;
+  clientId?: string | null;
   startTime?: string;
   endTime?: string;
   status?: string;
@@ -268,6 +269,7 @@ export async function updateBooking(data: {
   }
   if (data.clientName !== undefined) updates.client_name = data.clientName;
   if (data.clientPhone !== undefined) updates.client_phone = data.clientPhone;
+  if (data.clientId !== undefined) updates.client_id = data.clientId;
   if (data.startTime !== undefined) updates.start_time = data.startTime;
   if (data.endTime !== undefined) updates.end_time = data.endTime;
   if (data.status !== undefined) updates.status = data.status;
