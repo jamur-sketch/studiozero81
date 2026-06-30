@@ -26,7 +26,7 @@ interface InteractiveCalendarProps {
 
 // Opções do seletor de visualização no mobile. "Agenda" (lista) é o padrão.
 const VIEW_OPTIONS = [
-  { key: "listWeek", label: "Agenda" },
+  { key: "listDay", label: "Agenda" },
   { key: "timeGridDay", label: "Calendário (dia)" },
   { key: "timeGridWeek", label: "Calendário (semana)" },
   { key: "dayGridMonth", label: "Mês" },
@@ -216,7 +216,7 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, luxonPlugin, listPlugin]}
-        initialView={isMobile ? "listWeek" : "timeGridWeek"}
+        initialView={isMobile ? "listDay" : "timeGridWeek"}
         headerToolbar={isMobile
           ? { left: "prev,next today", center: "title", right: "" }
           : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }
@@ -252,7 +252,7 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
           day: "Dia",
           list: "Agenda",
         }}
-        noEventsContent="Nenhum agendamento nesta semana"
+        noEventsContent="Nenhum agendamento neste dia"
       />
     </div>
   );
