@@ -131,6 +131,7 @@ export default function ClientesPage() {
     setFormName("");
     setFormPhone("");
     setFormEmail("");
+    setTempPassword("");
     setEditMode(false);
     setSelectedClient(null);
   };
@@ -198,21 +199,28 @@ export default function ClientesPage() {
   };
 
   const [resetting, setResetting] = useState(false);
+  const [tempPassword, setTempPassword] = useState("");
 
-  const handleResetPassword = async () => {
-    if (!selectedClient?.email) return;
+  const handleSetTempPassword = async () => {
+    if (!selectedClient) return;
+    if (tempPassword.trim().length < 6) {
+      toast({ title: "A senha temporária precisa ter pelo menos 6 caracteres", variant: "destructive" });
+      return;
+    }
     setResetting(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(selectedClient.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { data, error } = await supabase.functions.invoke("admin-set-client-password", {
+        body: { clientId: selectedClient.id, tempPassword: tempPassword.trim() },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       toast({
-        title: "Link de redefinição enviado!",
-        description: `Enviamos um e-mail para ${selectedClient.email} com o link para criar uma nova senha.`,
+        title: "Senha temporária definida!",
+        description: "Passe essa senha ao cliente. No próximo acesso ele será obrigado a criar uma nova senha.",
       });
+      setTempPassword("");
     } catch (err: any) {
-      toast({ title: "Erro ao enviar redefinição", description: err.message, variant: "destructive" });
+      toast({ title: "Erro ao definir senha", description: err.message, variant: "destructive" });
     } finally {
       setResetting(false);
     }
@@ -426,26 +434,38 @@ export default function ClientesPage() {
             {editMode && (
               <div className="border-t border-border/60 pt-4">
                 <Label className="mb-1.5 block">Acesso do cliente</Label>
-                {selectedClient?.user_id && selectedClient?.email ? (
+                {selectedClient?.user_id ? (
                   <>
-                    <Button
-                      variant="outline"
-                      onClick={handleResetPassword}
-                      disabled={resetting}
-                      className="gap-2"
-                    >
-                      <KeyRound className="h-4 w-4" />
-                      {resetting ? "Enviando..." : "Resetar senha do cliente"}
-                    </Button>
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1 space-y-1.5">
+                        <Label htmlFor="tempPassword" className="text-xs text-muted-foreground">
+                          Senha temporária
+                        </Label>
+                        <Input
+                          id="tempPassword"
+                          type="text"
+                          value={tempPassword}
+                          onChange={(e) => setTempPassword(e.target.value)}
+                          placeholder="Mínimo 6 caracteres"
+                        />
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={handleSetTempPassword}
+                        disabled={resetting}
+                        className="gap-2 shrink-0"
+                      >
+                        <KeyRound className="h-4 w-4" />
+                        {resetting ? "Definindo..." : "Definir"}
+                      </Button>
+                    </div>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Enviamos um e-mail para o cliente com um link para ele criar uma nova senha.
+                      Defina uma senha temporária e passe ao cliente. No próximo acesso ele será obrigado a criar uma nova senha. Nenhum e-mail é enviado.
                     </p>
                   </>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    {selectedClient?.email
-                      ? "Este cliente ainda não criou uma conta de acesso, então não há senha para redefinir."
-                      : "Adicione um e-mail e salve para que o cliente possa criar uma conta de acesso."}
+                    Este cliente ainda não criou uma conta de acesso, então não há senha para redefinir.
                   </p>
                 )}
               </div>

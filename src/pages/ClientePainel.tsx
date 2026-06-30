@@ -125,6 +125,8 @@ export default function ClientePainel() {
     );
   }
 
+  const mustChangePassword = !!(user?.user_metadata as any)?.must_change_password;
+
   const upcoming = bookings.filter((b) => new Date(b.start_time) >= new Date() && b.status === "confirmed");
   const past = bookings.filter((b) => new Date(b.start_time) < new Date() || b.status !== "confirmed");
 
@@ -348,6 +350,85 @@ export default function ClientePainel() {
           }}
         />
       )}
+
+      {mustChangePassword && <ForcePasswordChangeDialog />}
+    </div>
+  );
+}
+
+function ForcePasswordChangeDialog() {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [show, setShow] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (password.length < 6) {
+      toast({ title: "A senha deve ter no mínimo 6 caracteres", variant: "destructive" });
+      return;
+    }
+    if (password !== confirm) {
+      toast({ title: "As senhas não coincidem", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password,
+        data: { must_change_password: false },
+      });
+      if (error) throw error;
+      toast({ title: "Senha atualizada!", description: "Pronto, sua nova senha já está valendo." });
+      // Recarrega para atualizar a sessão com a flag limpa.
+      window.location.reload();
+    } catch (err: any) {
+      toast({ title: "Erro ao atualizar senha", description: err.message, variant: "destructive" });
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" style={{ animation: "fadeInScale 0.2s ease-out" }}>
+        <div className="px-6 py-5 border-b border-gray-100">
+          <h2 className="text-lg font-bold text-gray-900">Crie uma nova senha</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Você entrou com uma senha temporária. Defina uma nova senha para continuar.
+          </p>
+        </div>
+        <div className="p-6 space-y-3">
+          <div className="relative">
+            <input
+              type={show ? "text" : "password"}
+              placeholder="Nova senha"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black"
+            />
+            <button
+              type="button"
+              onClick={() => setShow((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-medium"
+            >
+              {show ? "Ocultar" : "Mostrar"}
+            </button>
+          </div>
+          <input
+            type={show ? "text" : "password"}
+            placeholder="Confirmar nova senha"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black"
+          />
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="w-full py-3.5 rounded-xl text-[15px] font-semibold bg-black text-white flex items-center justify-center gap-2 disabled:opacity-50 mt-1"
+          >
+            {saving ? <><Loader2 className="h-4 w-4 animate-spin" /> Salvando...</> : "Salvar nova senha"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
