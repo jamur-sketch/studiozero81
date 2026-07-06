@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
-import { Save, Plus, Trash2, Loader2, ExternalLink, CheckCircle2, Settings, User, Scissors, Store, Link2 } from "lucide-react";
+import { Save, Plus, Trash2, Loader2, ExternalLink, CheckCircle2, Settings, User, Scissors, Store, Link2, Download } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
@@ -39,6 +39,13 @@ export default function Configuracoes() {
 
   const [googleConnected, setGoogleConnected] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(true);
+
+  const today = new Date().toISOString().split("T")[0];
+  const sixMonthsAgo = new Date(Date.now() - 180 * 86400_000).toISOString().split("T")[0];
+  const [importFrom, setImportFrom] = useState(sixMonthsAgo);
+  const [importTo, setImportTo] = useState(today);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number; errors: number } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -175,6 +182,28 @@ export default function Configuracoes() {
       toast.error(err.message || "Erro ao salvar configurações");
     } finally {
       setSystemSaving(false);
+    }
+  };
+
+  const handleImportCalendar = async () => {
+    if (!importFrom || !importTo) {
+      toast.error("Selecione o período de importação");
+      return;
+    }
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("google-calendar", {
+        body: { action: "import-calendar", dateStart: importFrom, dateEnd: importTo },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setImportResult(data);
+      toast.success(`Importação concluída: ${data.imported} agendamentos importados`);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao importar");
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -362,6 +391,45 @@ export default function Configuracoes() {
               <p className="text-xs text-muted-foreground">Conta: estudioo081@gmail.com</p>
             </CardContent>
           </Card>
+
+          {googleConnected && (
+            <Card className="border-border/40 shadow-sm">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary/5 flex items-center justify-center">
+                    <Download className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Importar do Google Calendar</CardTitle>
+                    <CardDescription className="text-xs">Traz os agendamentos existentes para o sistema. Agendamentos já importados são ignorados automaticamente.</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="importFrom" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">De</Label>
+                    <Input id="importFrom" type="date" value={importFrom} onChange={(e) => setImportFrom(e.target.value)} className="rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="importTo" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Até</Label>
+                    <Input id="importTo" type="date" value={importTo} onChange={(e) => setImportTo(e.target.value)} className="rounded-xl" />
+                  </div>
+                </div>
+                <Button onClick={handleImportCalendar} disabled={importing} className="gap-2 rounded-xl">
+                  {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  {importing ? "Importando..." : "Importar agendamentos"}
+                </Button>
+                {importResult && (
+                  <div className="text-sm rounded-xl bg-secondary/50 px-4 py-3 space-y-1 border border-border/40">
+                    <p><span className="font-semibold text-green-600">{importResult.imported}</span> agendamentos importados</p>
+                    <p><span className="font-semibold text-muted-foreground">{importResult.skipped}</span> já existiam (ignorados)</p>
+                    {importResult.errors > 0 && <p><span className="font-semibold text-red-500">{importResult.errors}</span> com erro</p>}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="border-border/40 shadow-sm">
             <CardHeader className="pb-4">

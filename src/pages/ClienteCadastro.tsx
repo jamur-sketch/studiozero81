@@ -42,12 +42,19 @@ export default function ClienteCadastro() {
       if (authError) throw authError;
 
       if (authData.user) {
-        await supabase.from("clients").insert({
+        const { data: clientRow } = await supabase.from("clients").insert({
           name: name.trim(),
           phone: phone.trim(),
           email: email.trim(),
           user_id: authData.user.id,
-        });
+        }).select("id").single();
+
+        // Tenta vincular agendamentos importados pelo telefone
+        if (clientRow?.id) {
+          supabase.functions.invoke("google-calendar", {
+            body: { action: "link-client-bookings", clientId: clientRow.id, phone: phone.trim() },
+          }).catch(() => {/* silencioso, não bloqueia o cadastro */});
+        }
       }
 
       toast({ title: "Conta criada com sucesso!", description: "Faça login para acessar." });

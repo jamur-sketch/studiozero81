@@ -211,6 +211,17 @@ async function cancelBooking(accessToken: string, supabase: any, eventId: string
   return { success: true };
 }
 
+function phoneDigits(raw: string): string {
+  return raw.replace(/\D/g, "");
+}
+
+function phonesMatch(a: string, b: string): boolean {
+  const da = phoneDigits(a);
+  const db = phoneDigits(b);
+  if (!da || !db || da.length < 8 || db.length < 8) return false;
+  return da === db || da.endsWith(db) || db.endsWith(da);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -218,10 +229,112 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const accessToken = await getAccessToken(supabase);
-
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
+
+    // ── POST actions that don't need Google Calendar ──────────────────────
+    if (req.method === "POST") {
+      const body = await req.json();
+      const bodyAction: string = body.action || action || "";
+
+      // Link existing bookings to a client by phone (called after registration)
+      if (bodyAction === "link-client-bookings") {
+        const { clientId, phone } = body;
+        if (!clientId || !phone) return json({ error: "clientId e phone são obrigatórios" }, 400);
+
+        // Verify the caller owns this client record
+        const authHeader = req.headers.get("Authorization") || "";
+        const token = authHeader.replace("Bearer ", "");
+        const { data: caller } = await supabase.auth.getUser(token);
+        const { data: clientRow } = await supabase.from("clients").select("user_id").eq("id", clientId).single();
+        if (!caller?.user || !clientRow || clientRow.user_id !== caller.user.id) {
+          return json({ error: "Não autorizado" }, 403);
+        }
+
+        const { data: unlinked } = await supabase.from("bookings").select("id, client_phone").is("client_id", null);
+        const toLink = (unlinked || []).filter((b: any) => phonesMatch(b.client_phone, phone));
+        for (const b of toLink) {
+          await supabase.from("bookings").update({ client_id: clientId }).eq("id", b.id);
+        }
+        return json({ linked: toLink.length });
+      }
+
+      // Import Google Calendar events into bookings (admin only)
+      if (bodyAction === "import-calendar") {
+        const authHeader = req.headers.get("Authorization") || "";
+        const token = authHeader.replace("Bearer ", "");
+        const { data: caller } = await supabase.auth.getUser(token);
+        if (!caller?.user) return json({ error: "Não autorizado" }, 401);
+        const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", caller.user.id).eq("role", "admin");
+        if (!roles || roles.length === 0) return json({ error: "Apenas administradores podem importar" }, 403);
+
+        const { dateStart, dateEnd } = body;
+        if (!dateStart || !dateEnd) return json({ error: "dateStart e dateEnd são obrigatórios" }, 400);
+
+        const accessToken = await getAccessToken(supabase);
+        const events = await getEvents(accessToken, dateStart, dateEnd);
+
+        // Existing google_event_ids to skip duplicates
+        const { data: existing } = await supabase.from("bookings").select("google_event_id").not("google_event_id", "is", null);
+        const existingIds = new Set((existing || []).map((b: any) => b.google_event_id));
+
+        // Clients for phone matching
+        const { data: clients } = await supabase.from("clients").select("id, phone");
+
+        let imported = 0, skipped = 0, errors = 0;
+
+        for (const event of events) {
+          try {
+            // Skip already imported or all-day events
+            if (existingIds.has(event.id) || !event.start?.dateTime) { skipped++; continue; }
+
+            // Parse "Nome - Serviço" from title
+            const title: string = event.summary || "";
+            const dashIdx = title.lastIndexOf(" - ");
+            let clientName = title.trim();
+            let service = "";
+            if (dashIdx > 0) {
+              clientName = title.substring(0, dashIdx).trim();
+              service = title.substring(dashIdx + 3).trim();
+            }
+
+            // Extract phone from description (first sequence of digits+formatting, min 8 digits)
+            const desc: string = event.description || "";
+            const phoneMatch = desc.match(/[\d][\d\s\-\(\)\.]{6,}[\d]/);
+            const rawPhone = phoneMatch ? phoneMatch[0].trim() : "";
+            const digits = phoneDigits(rawPhone);
+
+            // Match to a registered client
+            let clientId: string | null = null;
+            if (digits.length >= 8 && clients) {
+              const match = (clients as any[]).find((c) => phonesMatch(c.phone || "", rawPhone));
+              if (match) clientId = match.id;
+            }
+
+            const { error: insertError } = await supabase.from("bookings").insert({
+              google_event_id: event.id,
+              client_id: clientId,
+              client_name: clientName || "Sem nome",
+              client_phone: digits || rawPhone,
+              service,
+              start_time: event.start.dateTime,
+              end_time: event.end?.dateTime || event.start.dateTime,
+              status: "confirmed",
+              price: 0,
+            });
+
+            if (insertError) { errors++; } else { imported++; }
+          } catch (_) {
+            errors++;
+          }
+        }
+
+        return json({ imported, skipped, errors });
+      }
+    }
+
+    // ── Actions that need Google Calendar ────────────────────────────────
+    const accessToken = await getAccessToken(supabase);
 
     if (req.method === "GET" && action === "available-times") {
       const date = url.searchParams.get("date");
@@ -245,22 +358,23 @@ serve(async (req) => {
 
     if (req.method === "POST") {
       const body = await req.json();
+      const bodyAction: string = body.action || action || "";
 
-      if (action === "create-booking") {
+      if (bodyAction === "create-booking" || action === "create-booking") {
         const event = await createBooking(accessToken, supabase, body);
         return new Response(JSON.stringify({ success: true, event }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      if (action === "update-event") {
+      if (bodyAction === "update-event" || action === "update-event") {
         const event = await updateEvent(accessToken, supabase, body);
         return new Response(JSON.stringify({ success: true, event }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      if (action === "cancel-booking") {
+      if (bodyAction === "cancel-booking" || action === "cancel-booking") {
         const result = await cancelBooking(accessToken, supabase, body.eventId);
         return new Response(JSON.stringify(result), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -279,3 +393,10 @@ serve(async (req) => {
     });
   }
 });
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
