@@ -59,8 +59,9 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
           title: isBlock ? (b.service || "Bloqueado") : `${b.service} - ${b.client_name}`,
           start: b.start_time,
           end: b.end_time,
-          backgroundColor: isBlock ? "#6b7280" : undefined,
-          borderColor: isBlock ? "#4b5563" : undefined,
+          backgroundColor: isBlock ? "#ef4444" : undefined,
+          borderColor: isBlock ? "#dc2626" : undefined,
+          textColor: isBlock ? "#ffffff" : undefined,
           extendedProps: {
             description: isBlock ? b.service : `Telefone: ${b.client_phone}\nServiço: ${b.service}`,
             clientName: b.client_name,
