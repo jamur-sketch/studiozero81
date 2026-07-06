@@ -285,3 +285,16 @@
 .interactive-calendar .loading-indicator {
   animation: fadeIn 0.2s ease;
 }
+
+/* Bloqueios de horário — vermelho */
+.fc-event-blocked,
+.fc-event-blocked .fc-event-main,
+.fc-event-blocked .fc-event-main-frame {
+  background-color: #ef4444 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+.fc-event-blocked .fc-event-time,
+.fc-event-blocked .fc-event-title {
+  color: #ffffff !important;
+}
