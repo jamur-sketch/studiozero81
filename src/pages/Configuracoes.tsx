@@ -75,10 +75,12 @@ export default function Configuracoes() {
   }, []);
 
   useEffect(() => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-    fetch(`${supabaseUrl}/functions/v1/google-calendar-auth?action=status`)
-      .then((r) => r.json())
-      .then((d) => setGoogleConnected(!!d.connected))
+    supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "google_refresh_token")
+      .single()
+      .then(({ data }) => setGoogleConnected(!!data?.value))
       .catch(() => setGoogleConnected(false))
       .finally(() => setGoogleLoading(false));
   }, []);
