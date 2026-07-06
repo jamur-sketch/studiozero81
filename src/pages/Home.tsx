@@ -1,13 +1,15 @@
 import { useState, useCallback } from "react";
-import { Plus, CalendarDays } from "lucide-react";
+import { Plus, CalendarDays, Ban } from "lucide-react";
 import { BookingDialog } from "@/components/BookingDialog";
 import { EventEditDialog } from "@/components/EventEditDialog";
+import { BlockDialog } from "@/components/BlockDialog";
 import InteractiveCalendar from "@/components/InteractiveCalendar";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 
 export default function HomePage() {
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [blockOpen, setBlockOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | undefined>();
   const [refreshKey, setRefreshKey] = useState(0);
   const [editEvent, setEditEvent] = useState<{
@@ -16,6 +18,7 @@ export default function HomePage() {
     description?: string;
     start: string;
     end: string;
+    status?: string;
     recurring?: boolean;
     recurrenceGroup?: string | null;
   } | null>(null);
@@ -38,6 +41,7 @@ export default function HomePage() {
       description?: string;
       start: string;
       end: string;
+      status?: string;
       recurring?: boolean;
       recurrenceGroup?: string | null;
     }) => {
@@ -66,18 +70,32 @@ export default function HomePage() {
               <p className="text-sm text-muted-foreground capitalize">{today}</p>
             </div>
           </div>
-          <Button
-            onClick={() => {
-              setSelectedDate(undefined);
-              setBookingOpen(true);
-            }}
-            size="lg"
-            className="gap-2 rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all hover:-translate-y-0.5"
-          >
-            <Plus className="h-5 w-5" />
-            <span className="hidden sm:inline">Novo Agendamento</span>
-            <span className="sm:hidden">Novo</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => {
+                setSelectedDate(undefined);
+                setBlockOpen(true);
+              }}
+              size="lg"
+              variant="outline"
+              className="gap-2 rounded-xl"
+            >
+              <Ban className="h-5 w-5" />
+              <span className="hidden sm:inline">Bloquear</span>
+            </Button>
+            <Button
+              onClick={() => {
+                setSelectedDate(undefined);
+                setBookingOpen(true);
+              }}
+              size="lg"
+              className="gap-2 rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all hover:-translate-y-0.5"
+            >
+              <Plus className="h-5 w-5" />
+              <span className="hidden sm:inline">Novo Agendamento</span>
+              <span className="sm:hidden">Novo</span>
+            </Button>
+          </div>
         </header>
 
         <main className="flex-1 p-4 md:p-6 overflow-hidden relative">
@@ -106,6 +124,13 @@ export default function HomePage() {
         onClose={() => setEditEvent(null)}
         onSuccess={handleRefresh}
         event={editEvent}
+      />
+
+      <BlockDialog
+        isOpen={blockOpen}
+        onClose={() => setBlockOpen(false)}
+        onSuccess={handleRefresh}
+        selectedDate={selectedDate}
       />
     </AppLayout>
   );

@@ -309,6 +309,7 @@ export async function getDayBookings(date: string): Promise<Booking[]> {
     .gte("start_time", dayStart)
     .lte("start_time", dayEnd)
     .neq("status", "cancelled")
+    .neq("status", "blocked")
     .order("start_time");
 
   if (error) throw new Error(error.message);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Trash2, Save, Phone, User, Clock, Loader2, Scissors, Repeat, CalendarX, CalendarDays, Search, UserPlus, Check, Mail } from "lucide-react";
+import { X, Trash2, Save, Phone, User, Clock, Loader2, Scissors, Repeat, CalendarX, CalendarDays, Search, UserPlus, Check, Mail, Ban } from "lucide-react";
 import { SERVICES, updateBooking, cancelBooking, cancelRecurringSeries } from "@/lib/bookings";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -21,6 +21,7 @@ interface EventEditDialogProps {
     description?: string;
     start: string;
     end: string;
+    status?: string;
     recurring?: boolean;
     recurrenceGroup?: string | null;
   } | null;
@@ -218,6 +219,66 @@ export function EventEditDialog({ isOpen, onClose, onSuccess, event }: EventEdit
       setDeletingSeries(false);
     }
   };
+
+  // ── Bloqueio de horário ────────────────────────────────────────────────
+  if (event.status === "blocked") {
+    const startFmt = new Date(event.start).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+    const endFmt = new Date(event.end).toLocaleTimeString("pt-BR", { timeStyle: "short" });
+
+    const handleRemoveBlock = async () => {
+      if (!confirm("Remover este bloqueio?")) return;
+      setDeleting(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("google-calendar", {
+          body: { action: "delete-block", bookingId: event.id },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        toast({ title: "Bloqueio removido!" });
+        onSuccess();
+        onClose();
+      } catch (err: any) {
+        toast({ title: "Erro ao remover bloqueio", description: err.message, variant: "destructive" });
+      } finally {
+        setDeleting(false);
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm">
+        <div className="bg-card rounded-2xl shadow-2xl w-full max-w-sm mx-4" style={{ animation: "fadeInScale 0.2s ease-out" }}>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
+                <Ban className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <h2 className="font-semibold text-foreground">Horário Bloqueado</h2>
+            </div>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="p-6 space-y-3">
+            <p className="text-sm font-semibold text-foreground">{event.title}</p>
+            <p className="text-sm text-muted-foreground">{startFmt} – {endFmt}</p>
+          </div>
+          <div className="flex justify-end gap-2 px-6 pb-6">
+            <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Fechar
+            </button>
+            <button
+              onClick={handleRemoveBlock}
+              disabled={deleting}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-destructive text-destructive-foreground rounded-xl hover:bg-destructive/90 transition-colors disabled:opacity-50"
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              Remover Bloqueio
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm">

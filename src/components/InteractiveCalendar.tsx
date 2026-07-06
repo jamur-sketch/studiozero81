@@ -17,6 +17,7 @@ interface InteractiveCalendarProps {
     description?: string;
     start: string;
     end: string;
+    status?: string;
     recurring?: boolean;
     recurrenceGroup?: string | null;
   }) => void;
@@ -51,21 +52,26 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
     setLoading(true);
     try {
       const bookings = await getBookings(startStr, endStr);
-      const mapped = bookings.map((b: Booking) => ({
-        id: b.id,
-        title: `${b.service} - ${b.client_name}`,
-        start: b.start_time,
-        end: b.end_time,
-        extendedProps: {
-          description: `Telefone: ${b.client_phone}\nServiço: ${b.service}`,
-          clientName: b.client_name,
-          clientPhone: b.client_phone,
-          service: b.service,
-          status: b.status,
-          recurring: b.recurring,
-          recurrenceGroup: b.recurrence_group,
-        },
-      }));
+      const mapped = bookings.map((b: Booking) => {
+        const isBlock = b.status === "blocked";
+        return {
+          id: b.id,
+          title: isBlock ? (b.service || "Bloqueado") : `${b.service} - ${b.client_name}`,
+          start: b.start_time,
+          end: b.end_time,
+          backgroundColor: isBlock ? "#6b7280" : undefined,
+          borderColor: isBlock ? "#4b5563" : undefined,
+          extendedProps: {
+            description: isBlock ? b.service : `Telefone: ${b.client_phone}\nServiço: ${b.service}`,
+            clientName: b.client_name,
+            clientPhone: b.client_phone,
+            service: b.service,
+            status: b.status,
+            recurring: b.recurring,
+            recurrenceGroup: b.recurrence_group,
+          },
+        };
+      });
       setEvents(mapped);
     } catch (err: any) {
       console.error("Erro ao carregar eventos:", err);
@@ -121,6 +127,7 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
       description: evt.extendedProps?.description,
       start: evt.start?.toISOString() || "",
       end: evt.end?.toISOString() || "",
+      status: evt.extendedProps?.status,
       recurring: evt.extendedProps?.recurring,
       recurrenceGroup: evt.extendedProps?.recurrenceGroup,
     });

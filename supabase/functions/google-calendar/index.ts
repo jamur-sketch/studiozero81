@@ -360,6 +360,64 @@ serve(async (req) => {
       const body = await req.json();
       const bodyAction: string = body.action || action || "";
 
+      if (bodyAction === "create-block") {
+        const authHeader2 = req.headers.get("Authorization") || "";
+        const token2 = authHeader2.replace("Bearer ", "");
+        const { data: caller2 } = await supabase.auth.getUser(token2);
+        if (!caller2?.user) return json({ error: "Não autorizado" }, 401);
+        const { data: roles2 } = await supabase.from("user_roles").select("role").eq("user_id", caller2.user.id).eq("role", "admin");
+        if (!roles2 || roles2.length === 0) return json({ error: "Apenas administradores podem bloquear horários" }, 403);
+
+        const { start, end, reason } = body;
+        if (!start || !end) return json({ error: "start e end são obrigatórios" }, 400);
+
+        const gcalRes = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            summary: reason || "Bloqueio",
+            start: { dateTime: start, timeZone: TIMEZONE },
+            end: { dateTime: end, timeZone: TIMEZONE },
+          }),
+        });
+        const gcalEvent = await gcalRes.json();
+
+        await supabase.from("bookings").insert({
+          google_event_id: gcalEvent.id || null,
+          client_name: "Bloqueado",
+          client_phone: "",
+          service: reason || "Bloqueio",
+          start_time: start,
+          end_time: end,
+          status: "blocked",
+          price: 0,
+        });
+
+        return json({ success: true });
+      }
+
+      if (bodyAction === "delete-block") {
+        const authHeader2 = req.headers.get("Authorization") || "";
+        const token2 = authHeader2.replace("Bearer ", "");
+        const { data: caller2 } = await supabase.auth.getUser(token2);
+        if (!caller2?.user) return json({ error: "Não autorizado" }, 401);
+        const { data: roles2 } = await supabase.from("user_roles").select("role").eq("user_id", caller2.user.id).eq("role", "admin");
+        if (!roles2 || roles2.length === 0) return json({ error: "Apenas administradores podem remover bloqueios" }, 403);
+
+        const { bookingId } = body;
+        if (!bookingId) return json({ error: "bookingId é obrigatório" }, 400);
+
+        const { data: bk } = await supabase.from("bookings").select("google_event_id").eq("id", bookingId).single();
+        if (bk?.google_event_id) {
+          await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${bk.google_event_id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+        }
+        await supabase.from("bookings").delete().eq("id", bookingId);
+        return json({ success: true });
+      }
+
       if (bodyAction === "create-booking" || action === "create-booking") {
         const event = await createBooking(accessToken, supabase, body);
         return new Response(JSON.stringify({ success: true, event }), {
