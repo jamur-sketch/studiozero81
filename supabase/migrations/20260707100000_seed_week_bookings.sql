@@ -73,11 +73,7 @@ VALUES ('Gustavo Vieira', '', 'Corte', 50,
         '2026-07-10T18:45:00-03:00', '2026-07-10T19:30:00-03:00', 'confirmed', false);
 
 -- ── Sábado, 11/07 ────────────────────────────────────────────────────────────
-
--- Gilberto Melo — Corte e Barba — 08:00–09:15
-INSERT INTO bookings (client_name, client_phone, service, price, start_time, end_time, status, recurring)
-VALUES ('Gilberto Melo', '5199896-6086', 'Corte e barba', 75,
-        '2026-07-11T08:00:00-03:00', '2026-07-11T09:15:00-03:00', 'confirmed', false);
+-- (Gilberto Melo sábado é recorrente — ver migration 20260707110000)
 
 -- Romualdo — 09:00–10:00 (60 min → Barba)
 INSERT INTO bookings (client_name, client_phone, service, price, start_time, end_time, status, recurring)
