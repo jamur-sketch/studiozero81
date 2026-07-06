@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 export const SERVICES = [
   { name: "Corte", duration: 45, price: 50 },
   { name: "Corte e barba", duration: 75, price: 75 },
-  { name: "Barba", duration: 40, price: 35 },
+  { name: "Barba", duration: 60, price: 35 },
+  { name: "Barba e Contorno", duration: 75, price: 75 },
   { name: "Sobrancelha", duration: 15, price: 15 },
 ] as const;
 
