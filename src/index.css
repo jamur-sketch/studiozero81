@@ -287,12 +287,22 @@
 }
 
 /* Bloqueios de horário — vermelho */
-.fc-event-blocked,
+.fc-event-blocked {
+  background: #ef4444 !important;
+  background-color: #ef4444 !important;
+  border: 1px solid #dc2626 !important;
+  border-left: 3px solid #b91c1c !important;
+  border-color: #dc2626 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: #ffffff !important;
+}
 .fc-event-blocked .fc-event-main,
 .fc-event-blocked .fc-event-main-frame {
+  background: #ef4444 !important;
   background-color: #ef4444 !important;
-  border-color: #dc2626 !important;
-  color: #ffffff !important;
+  border: none !important;
+  outline: none !important;
 }
 .fc-event-blocked .fc-event-time,
 .fc-event-blocked .fc-event-title {
