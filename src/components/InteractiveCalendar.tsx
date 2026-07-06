@@ -287,6 +287,13 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
           list: "Agenda",
         }}
         noEventsContent="Nenhum agendamento neste dia"
+        eventDidMount={(info) => {
+          if (info.event.extendedProps?.status === "blocked") {
+            info.el.style.backgroundColor = "#ef4444";
+            info.el.style.borderColor = "#dc2626";
+            info.el.style.color = "#ffffff";
+          }
+        }}
       />
     </div>
   );
