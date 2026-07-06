@@ -271,6 +271,7 @@ export async function cancelRecurringSeries(recurrenceGroup: string): Promise<vo
 export async function updateBooking(data: {
   id: string;
   service?: string;
+  price?: number;
   clientName?: string;
   clientPhone?: string;
   clientId?: string | null;
@@ -284,6 +285,7 @@ export async function updateBooking(data: {
     const svc = SERVICES.find((s) => s.name === data.service);
     if (svc) updates.price = svc.price;
   }
+  if (data.price !== undefined) updates.price = data.price;
   if (data.clientName !== undefined) updates.client_name = data.clientName;
   if (data.clientPhone !== undefined) updates.client_phone = data.clientPhone;
   if (data.clientId !== undefined) updates.client_id = data.clientId;

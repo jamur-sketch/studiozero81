@@ -14,6 +14,7 @@ import {
   Crown,
   Percent,
 } from "lucide-react";
+import { updateBooking } from "@/lib/bookings";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,8 +104,11 @@ export default function FinanceiroPage() {
   const formatTime = (d: string) =>
     new Date(d).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 
-  const handleSetPayment = async (booking: Booking, status: "paid" | "owing" | "pending", method?: PaymentMethod) => {
+  const handleSetPayment = async (booking: Booking, status: "paid" | "owing" | "pending", method?: PaymentMethod, finalPrice?: number) => {
     try {
+      if (status === "paid" && finalPrice !== undefined && finalPrice !== booking.price) {
+        await updateBooking({ id: booking.id, price: finalPrice });
+      }
       await setBookingPayment(booking.id, status, method);
       toast({
         title:
@@ -121,12 +125,12 @@ export default function FinanceiroPage() {
     }
   };
 
-  const handleConfirmClosure = async (discountedTotal: number) => {
+  const handleConfirmClosure = async () => {
     setSaving(true);
     try {
       await saveCashClosure({
         date,
-        totalReceived: discountedTotal,
+        totalReceived: received,
         totalCash: byMethod.find((m) => m.key === "cash")?.total || 0,
         totalPix: byMethod.find((m) => m.key === "pix")?.total || 0,
         totalCredit: byMethod.find((m) => m.key === "credit")?.total || 0,
@@ -327,15 +331,20 @@ function PaymentDialog({
 }: {
   booking: Booking;
   onClose: () => void;
-  onSet: (b: Booking, status: "paid" | "owing" | "pending", method?: PaymentMethod) => void;
+  onSet: (b: Booking, status: "paid" | "owing" | "pending", method?: PaymentMethod, finalPrice?: number) => void;
 }) {
+  const [discount, setDiscount] = useState(0);
+  const originalPrice = booking.price || 0;
+  const discountAmount = originalPrice * (discount / 100);
+  const finalPrice = originalPrice - discountAmount;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
       <div className="bg-card rounded-2xl shadow-2xl w-full max-w-md" style={{ animation: "fadeInScale 0.2s ease-out" }}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
           <div>
             <h2 className="text-lg font-bold text-foreground tracking-tight">{booking.client_name}</h2>
-            <p className="text-sm text-muted-foreground">{booking.service} • R$ {(booking.price || 0).toFixed(2)}</p>
+            <p className="text-sm text-muted-foreground">{booking.service}</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-accent rounded-lg transition-colors">
             <X className="h-4 w-4 text-muted-foreground" />
@@ -343,6 +352,35 @@ function PaymentDialog({
         </div>
 
         <div className="p-6 space-y-4">
+          {/* Desconto */}
+          <div className="flex items-center gap-3 bg-secondary/50 rounded-xl px-4 py-3">
+            <Percent className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-sm text-muted-foreground">Desconto</span>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={discount || ""}
+              onChange={(e) => {
+                const v = Math.min(100, Math.max(0, Number(e.target.value)));
+                setDiscount(isNaN(v) ? 0 : v);
+              }}
+              placeholder="0"
+              className="w-16 px-2 py-1 border border-input rounded-lg bg-background text-foreground text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary"
+            />
+            <span className="text-sm text-muted-foreground">%</span>
+            <div className="ml-auto text-right">
+              {discount > 0 ? (
+                <>
+                  <span className="text-xs text-muted-foreground line-through block">R$ {originalPrice.toFixed(2)}</span>
+                  <span className="text-sm font-bold text-emerald-600">R$ {finalPrice.toFixed(2)}</span>
+                </>
+              ) : (
+                <span className="text-sm font-bold text-foreground">R$ {originalPrice.toFixed(2)}</span>
+              )}
+            </div>
+          </div>
+
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
               Forma de pagamento
@@ -353,7 +391,7 @@ function PaymentDialog({
                 return (
                   <button
                     key={m.key}
-                    onClick={() => onSet(booking, "paid", m.key)}
+                    onClick={() => onSet(booking, "paid", m.key, finalPrice)}
                     className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
                       active
                         ? "bg-emerald-600 text-white border-emerald-600"
@@ -416,14 +454,9 @@ function ClosingDialog({
   pendingCount: number;
   subscriberCount: number;
   saving: boolean;
-  onConfirm: (discountedTotal: number) => void;
+  onConfirm: () => void;
   onClose: () => void;
 }) {
-  const [discount, setDiscount] = useState(0);
-
-  const discountAmount = received * (discount / 100);
-  const finalTotal = received - discountAmount;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 backdrop-blur-sm p-4">
       <div className="bg-card rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col" style={{ animation: "fadeInScale 0.2s ease-out" }}>
@@ -438,6 +471,11 @@ function ClosingDialog({
         </div>
 
         <div className="p-6 space-y-5 overflow-y-auto">
+          <div className="bg-emerald-50 rounded-xl p-4">
+            <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">Total recebido</span>
+            <p className="text-3xl font-bold text-emerald-700 mt-1">R$ {received.toFixed(2)}</p>
+          </div>
+
           <div className="space-y-2">
             {byMethod.map((m) => (
               <div key={m.key} className="flex items-center justify-between text-sm">
@@ -445,47 +483,6 @@ function ClosingDialog({
                 <span className="font-semibold text-foreground">R$ {m.total.toFixed(2)}</span>
               </div>
             ))}
-          </div>
-
-          {/* Desconto */}
-          <div className="border border-border/50 rounded-xl p-4 space-y-3">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <Percent className="h-3.5 w-3.5" /> Desconto
-            </label>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={discount || ""}
-                onChange={(e) => {
-                  const v = Math.min(100, Math.max(0, Number(e.target.value)));
-                  setDiscount(isNaN(v) ? 0 : v);
-                }}
-                placeholder="0"
-                className="w-24 px-3 py-2 border border-input rounded-xl bg-background text-foreground text-sm text-center focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary"
-              />
-              <span className="text-sm text-muted-foreground">%</span>
-              {discount > 0 && (
-                <span className="text-sm text-red-500 font-medium ml-auto">− R$ {discountAmount.toFixed(2)}</span>
-              )}
-            </div>
-          </div>
-
-          {/* Total final */}
-          <div className={`rounded-xl p-4 ${discount > 0 ? "bg-amber-50" : "bg-emerald-50"}`}>
-            {discount > 0 && (
-              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                <span>Subtotal</span>
-                <span className="line-through">R$ {received.toFixed(2)}</span>
-              </div>
-            )}
-            <span className={`text-xs font-semibold uppercase tracking-wider ${discount > 0 ? "text-amber-700" : "text-emerald-700"}`}>
-              Total recebido
-            </span>
-            <p className={`text-3xl font-bold mt-1 ${discount > 0 ? "text-amber-700" : "text-emerald-700"}`}>
-              R$ {finalTotal.toFixed(2)}
-            </p>
           </div>
 
           <div className="border-t border-border/50 pt-4 space-y-3">
@@ -528,7 +525,7 @@ function ClosingDialog({
           <Button variant="outline" onClick={onClose} disabled={saving} className="rounded-xl">
             Cancelar
           </Button>
-          <Button onClick={() => onConfirm(finalTotal)} disabled={saving} className="flex-1 gap-2 rounded-xl">
+          <Button onClick={onConfirm} disabled={saving} className="flex-1 gap-2 rounded-xl">
             {saving ? (
               <><Loader2 className="h-4 w-4 animate-spin" /> Salvando...</>
             ) : (
