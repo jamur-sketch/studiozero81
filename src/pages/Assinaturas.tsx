@@ -369,17 +369,21 @@ export default function Assinaturas() {
                   </div>
                   <div className="flex-1 mb-5 space-y-2.5">
                     <div className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-primary shrink-0" /> {plan.cuts_per_month} Cortes/mês
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-primary shrink-0" /> Desconto {plan.discount_percent}%
+                      {plan.cuts_per_month > 0 ? (
+                        <><Check className="h-4 w-4 text-primary shrink-0" /> {plan.cuts_per_month >= 99 ? "Cortes Ilimitados" : `${plan.cuts_per_month} Cortes/mês`}</>
+                      ) : (
+                        <><X className="h-4 w-4 text-muted-foreground/40 shrink-0" /> <span className="text-muted-foreground">Sem Corte</span></>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       {plan.beards_per_month > 0 ? (
-                        <><Check className="h-4 w-4 text-primary shrink-0" /> {plan.beards_per_month} Barba/mês</>
+                        <><Check className="h-4 w-4 text-primary shrink-0" /> {plan.beards_per_month >= 99 ? "Barbas Ilimitadas" : `${plan.beards_per_month} Barba/mês`}</>
                       ) : (
                         <><X className="h-4 w-4 text-muted-foreground/40 shrink-0" /> <span className="text-muted-foreground">Sem Barba</span></>
                       )}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Check className="h-4 w-4 text-primary shrink-0" /> Desconto {plan.discount_percent}%
                     </div>
                   </div>
                   <Button variant="outline" className="w-full rounded-xl hover:bg-primary hover:text-primary-foreground transition-all" onClick={() => openEditPlan(plan)}>
