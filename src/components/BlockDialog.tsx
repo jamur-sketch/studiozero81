@@ -55,17 +55,17 @@ export function BlockDialog({ isOpen, onClose, onSuccess, selectedDate }: BlockD
       const startISO = new Date(`${date}T${startTime}:00-03:00`).toISOString();
       const endISO = new Date(`${date}T${endTime}:00-03:00`).toISOString();
 
-      const { data, error } = await supabase.functions.invoke("google-calendar", {
-        body: {
-          action: "create-block",
-          start: startISO,
-          end: endISO,
-          reason: reason.trim() || "Bloqueio",
-        },
+      const { error } = await supabase.from("bookings").insert({
+        client_name: "Bloqueado",
+        client_phone: "",
+        service: reason.trim() || "Bloqueio",
+        start_time: startISO,
+        end_time: endISO,
+        status: "blocked",
+        price: 0,
       });
 
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
 
       toast({ title: "Horário bloqueado!" });
       onClose();

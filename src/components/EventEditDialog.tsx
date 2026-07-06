@@ -229,11 +229,8 @@ export function EventEditDialog({ isOpen, onClose, onSuccess, event }: EventEdit
       if (!confirm("Remover este bloqueio?")) return;
       setDeleting(true);
       try {
-        const { data, error } = await supabase.functions.invoke("google-calendar", {
-          body: { action: "delete-block", bookingId: event.id },
-        });
+        const { error } = await supabase.from("bookings").delete().eq("id", event.id);
         if (error) throw error;
-        if (data?.error) throw new Error(data.error);
         toast({ title: "Bloqueio removido!" });
         onSuccess();
         onClose();
