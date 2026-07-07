@@ -250,7 +250,7 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, luxonPlugin, listPlugin]}
-        initialView={isMobile ? "listDay" : "timeGridWeek"}
+        initialView={isMobile ? "timeGridDay" : "timeGridWeek"}
         headerToolbar={isMobile
           ? { left: "", center: "title", right: "" }
           : { left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay" }
