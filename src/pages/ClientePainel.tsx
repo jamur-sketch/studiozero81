@@ -10,6 +10,9 @@ import {
   Plus,
   Scissors,
   User,
+  Shield,
+  ChevronDown,
+  ChevronUp,
   ChevronLeft,
   Loader2,
   X,
@@ -58,6 +61,9 @@ export default function ClientePainel() {
   const [loading, setLoading] = useState(true);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [subscribePlan, setSubscribePlan] = useState<Plan | null>(null);
+  const [lgpdOpen, setLgpdOpen] = useState(false);
+  const [lgpdExpanded, setLgpdExpanded] = useState(false);
+  const [lgpdSaving, setLgpdSaving] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -77,6 +83,7 @@ export default function ClientePainel() {
 
     if (clientData) {
       setClient(clientData);
+      if (!clientData.lgpd_consent) setLgpdOpen(true);
 
       // Renova os horários fixos do cliente (gera as próximas semanas que faltarem).
       try {
@@ -115,6 +122,24 @@ export default function ClientePainel() {
   const handleLogout = async () => {
     await signOut();
     navigate("/cliente/login");
+  };
+
+  const handleLgpdAccept = async () => {
+    if (!client) return;
+    setLgpdSaving(true);
+    try {
+      await supabase.from("clients").update({
+        lgpd_consent: true,
+        lgpd_consent_at: new Date().toISOString(),
+      }).eq("id", client.id);
+      setClient((c: any) => ({ ...c, lgpd_consent: true }));
+      setLgpdOpen(false);
+      toast({ title: "Consentimento registrado. Obrigado!" });
+    } catch {
+      toast({ title: "Erro ao registrar consentimento", variant: "destructive" });
+    } finally {
+      setLgpdSaving(false);
+    }
   };
 
   if (authLoading || loading) {
@@ -849,6 +874,64 @@ function ClientBookingDialog({
           )}
         </div>
       </div>
+
+      {/* Modal LGPD para usuários existentes sem consentimento */}
+      {lgpdOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" style={{ animation: "fadeInScale 0.25s ease-out" }}>
+            <div className="px-6 pt-6 pb-4 flex items-center gap-3 border-b border-gray-100">
+              <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center shrink-0">
+                <Shield className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-black">Proteção de Dados (LGPD)</h2>
+                <p className="text-xs text-gray-500">Precisamos do seu consentimento para continuar</p>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 space-y-3">
+              <p className="text-sm text-gray-700">
+                Em conformidade com a <strong>Lei Geral de Proteção de Dados (Lei nº 13.709/2018)</strong>,
+                o <strong>Studio Zero81</strong> trata seus dados pessoais para gestão de agendamentos.
+              </p>
+
+              <button
+                type="button"
+                onClick={() => setLgpdExpanded((v) => !v)}
+                className="flex items-center gap-2 text-xs font-medium text-black hover:opacity-70 transition-opacity"
+              >
+                {lgpdExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                {lgpdExpanded ? "Recolher detalhes" : "Ver detalhes completos"}
+              </button>
+
+              {lgpdExpanded && (
+                <div className="text-xs text-gray-600 leading-relaxed bg-gray-50 rounded-xl p-4 space-y-2">
+                  <p><strong>Dados coletados:</strong> nome completo, WhatsApp e e-mail.</p>
+                  <p><strong>Finalidade:</strong> gerenciamento de agendamentos e relacionamento com o cliente.</p>
+                  <p><strong>Compartilhamento:</strong> seus dados não são compartilhados com terceiros.</p>
+                  <p><strong>Seus direitos:</strong> você pode solicitar a exclusão dos seus dados a qualquer momento pelo WhatsApp da barbearia.</p>
+                  <p><strong>Base legal:</strong> execução de contrato (art. 7º, V) e legítimo interesse (art. 7º, IX) da LGPD.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 pb-6">
+              <button
+                onClick={handleLgpdAccept}
+                disabled={lgpdSaving}
+                className="w-full py-3.5 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: "#000000" }}
+              >
+                {lgpdSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+                {lgpdSaving ? "Registrando..." : "Entendi e concordo"}
+              </button>
+              <p className="text-xs text-gray-400 text-center mt-3">
+                Ao continuar usando o aplicativo você está ciente desta política.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

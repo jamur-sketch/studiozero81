@@ -48,13 +48,14 @@ export default function ClienteCadastro() {
       if (authError) throw authError;
 
       if (authData.user) {
-        const { data: clientRow } = await supabase.from("clients").insert({
+        await supabase.from("clients").insert({
           name: name.trim(),
           phone: phone.trim(),
           email: email.trim(),
           user_id: authData.user.id,
-        }).select("id").single();
-
+          lgpd_consent: true,
+          lgpd_consent_at: new Date().toISOString(),
+        });
       }
 
       toast({ title: "Conta criada com sucesso!", description: "Faça login para acessar." });
