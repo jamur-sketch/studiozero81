@@ -1,9 +1,9 @@
 import { useState, useCallback } from "react";
 import { Plus, CalendarDays, Ban } from "lucide-react";
-import { BookingDialog } from "@/components/BookingDialog";
-import { EventEditDialog } from "@/components/EventEditDialog";
-import { BlockDialog } from "@/components/BlockDialog";
-import InteractiveCalendar from "@/components/InteractiveCalendar";
+import { BookingDialog } from "@/features/agenda/components/BookingDialog";
+import { EventEditDialog } from "@/features/agenda/components/EventEditDialog";
+import { BlockDialog } from "@/features/agenda/components/BlockDialog";
+import InteractiveCalendar from "@/features/agenda/components/InteractiveCalendar";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 

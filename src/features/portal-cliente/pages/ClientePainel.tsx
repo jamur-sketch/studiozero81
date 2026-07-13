@@ -30,7 +30,7 @@ import {
   createRecurringBooking,
   ensureRecurringBookings,
   type Booking,
-} from "@/lib/bookings";
+} from "@/features/agenda/api";
 
 interface Plan {
   id: string;

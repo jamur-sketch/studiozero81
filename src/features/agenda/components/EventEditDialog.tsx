@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Trash2, Save, Phone, User, Clock, Loader2, Scissors, Repeat, CalendarX, CalendarDays, Search, UserPlus, Check, Mail, Ban } from "lucide-react";
-import { SERVICES, updateBooking, cancelBooking, cancelRecurringSeries } from "@/lib/bookings";
+import { SERVICES, updateBooking, cancelBooking, cancelRecurringSeries } from "@/features/agenda/api";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";

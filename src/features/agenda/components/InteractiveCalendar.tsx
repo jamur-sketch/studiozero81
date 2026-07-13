@@ -6,7 +6,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import luxonPlugin from "@fullcalendar/luxon3";
 import listPlugin from "@fullcalendar/list";
 import type { EventClickArg, EventDropArg, DateSelectArg } from "@fullcalendar/core";
-import { getBookings, updateBooking, ensureRecurringBookings, type Booking } from "@/lib/bookings";
+import { getBookings, updateBooking, ensureRecurringBookings, type Booking } from "@/features/agenda/api";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 

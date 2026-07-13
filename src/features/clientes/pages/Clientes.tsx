@@ -30,7 +30,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import AppLayout from "@/components/AppLayout";
-import { getOwingBookings } from "@/lib/bookings";
+import { getOwingBookings } from "@/features/financeiro/api";
 import { toast } from "@/hooks/use-toast";
 
 interface Client {

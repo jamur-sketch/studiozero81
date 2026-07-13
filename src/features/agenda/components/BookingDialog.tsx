@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Clock, User, Phone, Mail, Search, UserPlus, Check, ChevronLeft, Loader2, CalendarDays, Scissors, AlertCircle } from "lucide-react";
-import { SERVICES, type ServiceName, getAvailableTimes, createBooking, getOwingBookings } from "@/lib/bookings";
+import { SERVICES, type ServiceName, getAvailableTimes, createBooking } from "@/features/agenda/api";
+import { getOwingBookings } from "@/features/financeiro/api";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";

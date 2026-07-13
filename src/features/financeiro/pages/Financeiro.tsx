@@ -14,7 +14,7 @@ import {
   Crown,
   Percent,
 } from "lucide-react";
-import { updateBooking } from "@/lib/bookings";
+import { updateBooking } from "@/features/agenda/api";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +28,7 @@ import {
   type Booking,
   type PaymentMethod,
   type CashClosure,
-} from "@/lib/bookings";
+} from "@/features/financeiro/api";
 import { toast } from "@/hooks/use-toast";
 
 const METHOD_ICON: Record<string, React.ReactNode> = {
