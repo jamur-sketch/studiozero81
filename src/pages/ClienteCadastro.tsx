@@ -48,7 +48,7 @@ export default function ClienteCadastro() {
       if (authError) throw authError;
 
       if (authData.user) {
-        await supabase.from("clients").insert({
+        const { error: clientError } = await supabase.from("clients").insert({
           name: name.trim(),
           phone: phone.trim(),
           email: email.trim(),
@@ -56,6 +56,7 @@ export default function ClienteCadastro() {
           lgpd_consent: true,
           lgpd_consent_at: new Date().toISOString(),
         });
+        if (clientError) throw new Error(`Conta criada, mas houve um erro no cadastro do perfil: ${clientError.message}`);
       }
 
       toast({ title: "Conta criada com sucesso!", description: "Faça login para acessar." });

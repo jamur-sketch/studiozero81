@@ -189,11 +189,11 @@ export async function ensureRecurringBookings(opts?: {
 
   // Busca tudo que já existe na janela de uma vez para checar conflitos/duplicatas em memória.
   // Inclui os cancelados de propósito para não recriar uma semana que foi removida manualmente.
-  const { data: existing, error: existingError } = await supabase
-    .from("bookings")
-    .select("start_time, end_time, recurrence_group, status")
-    .gte("start_time", now.toISOString())
-    .lte("start_time", windowEnd.toISOString());
+  // Usa a função RPC (security definer) porque clientes não enxergam bookings de terceiros.
+  const { data: existing, error: existingError } = await (supabase.rpc as any)("get_booked_slots", {
+    p_start: now.toISOString(),
+    p_end: windowEnd.toISOString(),
+  });
 
   if (existingError) throw new Error(existingError.message);
 
@@ -457,14 +457,16 @@ export async function getAvailableTimes(
   const dayStart = `${date}T00:00:00`;
   const dayEnd = `${date}T23:59:59`;
 
-  const { data: existing, error } = await supabase
-    .from("bookings")
-    .select("start_time, end_time")
-    .gte("start_time", dayStart)
-    .lte("start_time", dayEnd)
-    .neq("status", "cancelled");
+  // RPC (security definer): devolve só horários ocupados, sem dados pessoais,
+  // para que clientes vejam a disponibilidade sem acesso aos bookings alheios.
+  const { data: busy, error } = await (supabase.rpc as any)("get_booked_slots", {
+    p_start: dayStart,
+    p_end: dayEnd,
+  });
 
   if (error) throw new Error(error.message);
+
+  const existing = (busy || []).filter((b: any) => b.status !== "cancelled");
 
   const windows = opts?.unrestricted ? ADMIN_WINDOWS : WORKING_WINDOWS;
   const slots: { start: string; end: string }[] = [];
