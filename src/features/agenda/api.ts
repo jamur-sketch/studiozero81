@@ -295,11 +295,16 @@ export async function cancelBooking(id: string): Promise<void> {
 
   if (error) throw new Error(error.message);
 }
-// Janelas de atendimento para o cliente: Segunda a Sexta, manhã e tarde.
+// Janelas de atendimento para o cliente, por dia da semana.
 // [início (minutos desde meia-noite), fim (minutos desde meia-noite)]
-const WORKING_WINDOWS = [
+const WEEKDAY_WINDOWS = [
   [9 * 60, 12 * 60], // 09:00 - 12:00
   [13 * 60, 19 * 60], // 13:00 - 19:00
+] as const;
+
+// Sábado: atendimento apenas pela manhã, até as 13:00.
+const SATURDAY_WINDOWS = [
+  [8 * 60, 13 * 60], // 08:00 - 13:00
 ] as const;
 
 // Janela ampla usada pelo admin (autonomia total): dia inteiro, qualquer dia.
@@ -313,11 +318,9 @@ export async function getAvailableTimes(
   const svc = SERVICES.find((s) => s.name === service);
   const duration = svc?.duration || 45;
 
-  // Cliente: Segunda a Sexta apenas (0 = domingo, 6 = sábado). Admin não tem essa restrição.
-  if (!opts?.unrestricted) {
-    const weekday = new Date(`${date}T12:00:00`).getDay();
-    if (weekday === 0 || weekday === 6) return [];
-  }
+  // Cliente: Segunda a Sábado (0 = domingo é fechado). Admin não tem essa restrição.
+  const weekday = new Date(`${date}T12:00:00`).getDay();
+  if (!opts?.unrestricted && weekday === 0) return [];
 
   const dayStart = `${date}T00:00:00`;
   const dayEnd = `${date}T23:59:59`;
@@ -333,7 +336,11 @@ export async function getAvailableTimes(
 
   const existing = (busy || []).filter((b: any) => b.status !== "cancelled");
 
-  const windows = opts?.unrestricted ? ADMIN_WINDOWS : WORKING_WINDOWS;
+  const windows = opts?.unrestricted
+    ? ADMIN_WINDOWS
+    : weekday === 6
+      ? SATURDAY_WINDOWS
+      : WEEKDAY_WINDOWS;
   const slots: { start: string; end: string }[] = [];
 
   for (const [windowStart, windowEnd] of windows) {
