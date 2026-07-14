@@ -302,9 +302,9 @@ const WEEKDAY_WINDOWS = [
   [13 * 60, 19 * 60], // 13:00 - 19:00
 ] as const;
 
-// Sábado: atendimento apenas pela manhã, até as 13:00.
+// Sábado: atendimento apenas pela manhã, até as 14:00.
 const SATURDAY_WINDOWS = [
-  [8 * 60, 13 * 60], // 08:00 - 13:00
+  [8 * 60, 14 * 60], // 08:00 - 14:00
 ] as const;
 
 // Janela ampla usada pelo admin (autonomia total): dia inteiro, qualquer dia.
