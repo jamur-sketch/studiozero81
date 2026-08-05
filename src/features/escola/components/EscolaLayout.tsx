@@ -1,5 +1,16 @@
 import { Link, useNavigate } from "react-router-dom";
 import { GraduationCap, Home, LogOut, RotateCcw, School, Users } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { NavLink } from "@/components/NavLink";
@@ -123,17 +134,27 @@ export default function EscolaLayout({ titulo, subtitulo, migalhas = [], acoes, 
               <LogOut className="h-4 w-4" />
             </button>
           </div>
-          <button
-            onClick={() => {
-              if (confirm("Recarregar os dados fictícios de demonstração?")) {
-                reiniciarDemonstracao();
-              }
-            }}
-            className="mt-3 flex items-center gap-2 text-[11px] text-sidebar-foreground/35 hover:text-sidebar-foreground/70 transition-colors"
-          >
-            <RotateCcw className="h-3 w-3" />
-            Reiniciar dados de demonstração
-          </button>
+          <AlertDialog>
+            <AlertDialogTrigger className="mt-3 flex items-center gap-2 text-[11px] text-sidebar-foreground/35 hover:text-sidebar-foreground/70 transition-colors">
+              <RotateCcw className="h-3 w-3" />
+              Reiniciar dados de demonstração
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reiniciar os dados de demonstração?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  As chamadas lançadas por você voltam ao estado inicial e as fichas fictícias são
+                  recriadas. Serve para testar o sistema do zero.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => reiniciarDemonstracao()}>
+                  Reiniciar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </aside>
 

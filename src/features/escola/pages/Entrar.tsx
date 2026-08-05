@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Info, School } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -78,7 +78,7 @@ export default function Entrar() {
 
         <p className="text-center text-xs text-muted-foreground">
           <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
-            <a href="/escola/gestao">Painel da gestão</a>
+            <Link to="/escola/gestao">Painel da gestão</Link>
           </Button>
         </p>
       </div>
