@@ -27,6 +27,11 @@ import {
 } from "@/components/ui/sidebar";
 import { NavLink } from "@/components/NavLink";
 import { Separator } from "@/components/ui/separator";
+import {
+  NotificationsProvider,
+  useNotifications,
+} from "@/features/notificacoes/NotificationsContext";
+import { NotificationBell } from "@/features/notificacoes/components/NotificationBell";
 
 const navItems = [
   { title: "Agenda", url: "/home", icon: CalendarDays },
@@ -64,7 +69,10 @@ function AppSidebar() {
               </span>
             </div>
           </div>
-          <SidebarTrigger className="text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors" />
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            <SidebarTrigger className="text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors" />
+          </div>
         </div>
       </SidebarHeader>
 
@@ -126,24 +134,37 @@ function AppSidebar() {
 
 function MobileMenuButton() {
   const { toggleSidebar } = useSidebar();
+  const { unreadCount } = useNotifications();
+
   return (
     <button
       onClick={toggleSidebar}
       className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg"
+      aria-label={
+        unreadCount > 0 ? `Menu (${unreadCount} notificações não lidas)` : "Menu"
+      }
     >
       <Menu className="h-5 w-5" />
+      {/* Avisa que há notificações sem precisar abrir o menu. */}
+      {unreadCount > 0 && (
+        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none ring-2 ring-background">
+          {unreadCount > 9 ? "9+" : unreadCount}
+        </span>
+      )}
     </button>
   );
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar />
-        <MobileMenuButton />
-        {children}
-      </div>
-    </SidebarProvider>
+    <NotificationsProvider>
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full">
+          <AppSidebar />
+          <MobileMenuButton />
+          {children}
+        </div>
+      </SidebarProvider>
+    </NotificationsProvider>
   );
 }
