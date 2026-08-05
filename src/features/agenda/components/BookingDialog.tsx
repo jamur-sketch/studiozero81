@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { X, Clock, User, Phone, Mail, Search, UserPlus, Check, ChevronLeft, Loader2, CalendarDays, Scissors, AlertCircle } from "lucide-react";
-import { SERVICES, type ServiceName, getAvailableTimes, createBooking } from "@/features/agenda/api";
+import { X, Clock, User, Phone, Mail, Search, UserPlus, Check, ChevronLeft, Loader2, CalendarDays, Scissors, AlertCircle, Repeat } from "lucide-react";
+import { SERVICES, type ServiceName, getAvailableTimes, createBooking, createRecurringBooking } from "@/features/agenda/api";
 import { getOwingBookings } from "@/features/financeiro/api";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -26,6 +26,7 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
   const [selectedTime, setSelectedTime] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [recurring, setRecurring] = useState(false);
 
   // Seleção / cadastro de cliente
   const [clients, setClients] = useState<ClientOption[]>([]);
@@ -115,15 +116,25 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
         phone = data.phone || "";
       }
 
-      await createBooking({
+      const payload = {
         date,
         time: selectedTime,
         service: service as string,
         clientName: name,
         clientPhone: phone,
         clientId: clientId || undefined,
-      });
-      toast({ title: "Agendamento criado com sucesso!" });
+      };
+
+      if (recurring) {
+        await createRecurringBooking(payload);
+        toast({
+          title: "Horário fixo reservado!",
+          description: `${name} fica com este horário reservado toda semana.`,
+        });
+      } else {
+        await createBooking(payload);
+        toast({ title: "Agendamento criado com sucesso!" });
+      }
       resetAndClose();
       onSuccess();
     } catch (err: any) {
@@ -144,6 +155,7 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
     setNewPhone("");
     setNewEmail("");
     setAvailableSlots([]);
+    setRecurring(false);
     onClose();
   };
 
@@ -158,6 +170,7 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
   };
 
   const svcInfo = SERVICES.find((s) => s.name === service);
+  const weekdayLabel = new Date(date + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "long" });
 
   const stepIndicator = (
     <div className="flex items-center gap-2 px-6 py-3 bg-secondary/50 border-b border-border/50">
@@ -427,13 +440,40 @@ export function BookingDialog({ isOpen, onClose, onSuccess, selectedDate }: Book
                 </div>
               )}
 
+              <button
+                type="button"
+                onClick={() => setRecurring((v) => !v)}
+                className={`w-full flex items-start gap-3 p-4 rounded-xl border text-left transition-all mt-5 ${
+                  recurring
+                    ? "border-violet-300 bg-violet-50"
+                    : "border-border/60 bg-background hover:border-muted-foreground/40"
+                }`}
+              >
+                <div
+                  className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all ${
+                    recurring ? "bg-violet-600 border-violet-600" : "border-muted-foreground/40"
+                  }`}
+                >
+                  {recurring && <Repeat className="h-3 w-3 text-white" />}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Reservar sempre este horário</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {weekdayLabel} às {selectedTime} fica fixo para este cliente toda semana,
+                    {" "}renovado automaticamente.
+                  </p>
+                </div>
+              </button>
+
               <Button
                 onClick={handleSubmit}
                 disabled={loading || (!creatingNew && !selectedClientId) || (creatingNew && !newName.trim())}
-                className="w-full mt-5 py-3 h-auto rounded-xl font-semibold shadow-lg shadow-primary/15 hover:shadow-xl hover:shadow-primary/25 transition-all hover:-translate-y-0.5 disabled:opacity-50"
+                className="w-full mt-4 py-3 h-auto rounded-xl font-semibold shadow-lg shadow-primary/15 hover:shadow-xl hover:shadow-primary/25 transition-all hover:-translate-y-0.5 disabled:opacity-50"
               >
                 {loading ? (
                   <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Criando...</>
+                ) : recurring ? (
+                  "Reservar horário fixo"
                 ) : (
                   "Confirmar Agendamento"
                 )}
