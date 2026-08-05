@@ -56,9 +56,9 @@ export function BlockDialog({ isOpen, onClose, onSuccess, selectedDate }: BlockD
       const endISO = new Date(`${date}T${endTime}:00-03:00`).toISOString();
 
       const { error } = await supabase.from("bookings").insert({
-        client_name: "Bloqueado",
+        client_name: "Agenda bloqueada",
         client_phone: "",
-        service: reason.trim() || "Bloqueio",
+        service: reason.trim() || "Agenda bloqueada",
         start_time: startISO,
         end_time: endISO,
         status: "blocked",

@@ -56,7 +56,7 @@ export default function InteractiveCalendar({ onEventClick, onDateSelect, refres
         const isBlock = b.status === "blocked";
         return {
           id: b.id,
-          title: isBlock ? (b.service || "Bloqueado") : `${b.service} - ${b.client_name}`,
+          title: isBlock ? (b.service || "Agenda bloqueada") : `${b.service} - ${b.client_name}`,
           start: b.start_time,
           end: b.end_time,
           backgroundColor: isBlock ? "#ef4444" : undefined,
