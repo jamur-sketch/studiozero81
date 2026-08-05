@@ -189,6 +189,46 @@ export function resumoTurma(
   };
 }
 
+export interface SituacaoTurma {
+  turma: Turma;
+  status: StatusChamada;
+  chamada: Chamada | undefined;
+  professoras: { id: string; nome: string }[];
+  alunos: number;
+}
+
+/** Como está a chamada de cada turma num dia — a visão de cobrança da gestão. */
+export function situacaoDoDia(
+  estado: EstadoEscola,
+  data: string,
+  hoje = hojeIso(),
+): SituacaoTurma[] {
+  return estado.turmas.map((turma) => {
+    const chamada = estado.chamadas[chaveChamada(turma.id, data)];
+    return {
+      turma,
+      chamada,
+      status: statusChamada(chamada, data, hoje),
+      professoras: turma.professoraIds
+        .map((id) => estado.professoras.find((p) => p.id === id))
+        .filter((p): p is NonNullable<typeof p> => Boolean(p))
+        .map((p) => ({ id: p.id, nome: p.nome })),
+      alunos: alunosDaTurma(estado, turma.id).length,
+    };
+  });
+}
+
+/** Últimos dias letivos com o status de cada turma, do mais recente ao mais antigo. */
+export function panoramaChamadas(
+  estado: EstadoEscola,
+  periodoId: string,
+  quantidadeDeDias = 15,
+  hoje = hojeIso(),
+): { data: string; turmas: SituacaoTurma[] }[] {
+  const datas = datasDaTurma(estado, periodoId, hoje).slice(-quantidadeDeDias).reverse();
+  return datas.map((data) => ({ data, turmas: situacaoDoDia(estado, data, hoje) }));
+}
+
 // ---------------------------------------------------------------------------
 // Aviso de faltas para a direção
 // ---------------------------------------------------------------------------

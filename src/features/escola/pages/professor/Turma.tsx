@@ -2,16 +2,16 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { BarChart3, CalendarDays, ClipboardCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import EscolaLayout from "../components/EscolaLayout";
-import { useEstadoEscola } from "../data/store";
+import EscolaLayout from "../../components/EscolaLayout";
+import { useEstadoEscola } from "../../data/store";
 import {
   ROTULO_TURNO,
   alunosDaTurma,
   chaveChamada,
   statusChamada,
   turnosDaTurma,
-} from "../lib/chamada";
-import { hojeIso, rotuloData } from "../lib/datas";
+} from "../../lib/chamada";
+import { hojeIso, rotuloData } from "../../lib/datas";
 
 export default function TurmaPage() {
   const { turmaId = "" } = useParams();
@@ -19,7 +19,7 @@ export default function TurmaPage() {
   const hoje = hojeIso();
 
   const turma = estado.turmas.find((t) => t.id === turmaId);
-  if (!turma) return <Navigate to="/escola/painel" replace />;
+  if (!turma) return <Navigate to="/escola/professor" replace />;
 
   const alunos = alunosDaTurma(estado, turma.id);
   const turnos = turnosDaTurma(turma.turno);
@@ -34,25 +34,25 @@ export default function TurmaPage() {
       titulo: "Chamada",
       descricao: "Lançar e revisar a frequência dia a dia",
       icone: ClipboardCheck,
-      para: `/escola/turma/${turma.id}/chamada`,
+      para: `/escola/professor/turma/${turma.id}/chamada`,
     },
     {
       titulo: "Estudantes",
       descricao: `${alunos.length} crianças matriculadas`,
       icone: Users,
-      para: `/escola/turma/${turma.id}/alunos`,
+      para: `/escola/professor/turma/${turma.id}/alunos`,
     },
     {
       titulo: "Visão geral da turma",
       descricao: "Frequência de cada criança no período",
       icone: BarChart3,
-      para: `/escola/turma/${turma.id}/visao-geral`,
+      para: `/escola/professor/turma/${turma.id}/visao-geral`,
     },
     {
       titulo: "Chamada de hoje",
       descricao: rotuloData(hoje),
       icone: CalendarDays,
-      para: `/escola/turma/${turma.id}/chamada/${hoje}`,
+      para: `/escola/professor/turma/${turma.id}/chamada/${hoje}`,
     },
   ];
 
@@ -61,8 +61,8 @@ export default function TurmaPage() {
       titulo={turma.nome}
       subtitulo={`${turma.nivel} · ${turma.etapa} · ${turma.sala}`}
       migalhas={[
-        { rotulo: "Início", para: "/escola/painel" },
-        { rotulo: "Turmas", para: "/escola/painel" },
+        { rotulo: "Início", para: "/escola/professor" },
+        { rotulo: "Turmas", para: "/escola/professor" },
         { rotulo: turma.nome },
       ]}
       acoes={

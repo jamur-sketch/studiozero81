@@ -11,10 +11,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import EscolaLayout from "../components/EscolaLayout";
-import { ModalAvisoEntrada } from "../components/AvisoPendencias";
-import { useEstadoEscola } from "../data/store";
-import { useProfessora } from "../hooks/useProfessora";
+import EscolaLayout from "../../components/EscolaLayout";
+import { ModalAvisoEntrada } from "../../components/AvisoPendencias";
+import { useEstadoEscola } from "../../data/store";
+import { useSessao } from "../../hooks/useSessao";
 import {
   ROTULO_TURNO,
   alunosDaTurma,
@@ -23,12 +23,12 @@ import {
   statusChamada,
   turmasDaProfessora,
   turnosDaTurma,
-} from "../lib/chamada";
-import { hojeIso, rotuloData } from "../lib/datas";
+} from "../../lib/chamada";
+import { hojeIso, rotuloData } from "../../lib/datas";
 
 export default function Painel() {
   const estado = useEstadoEscola();
-  const { professora } = useProfessora();
+  const { professora } = useSessao();
   const hoje = hojeIso();
 
   const turmas = professora ? turmasDaProfessora(estado, professora.id) : [];
@@ -100,7 +100,7 @@ export default function Painel() {
                       <TableRow key={turma.id}>
                         <TableCell className="font-medium">
                           <Link
-                            to={`/escola/turma/${turma.id}`}
+                            to={`/escola/professor/turma/${turma.id}`}
                             className="hover:underline underline-offset-4"
                           >
                             {turma.nome}
@@ -128,8 +128,8 @@ export default function Painel() {
                             <Link
                               to={
                                 status === "lancada"
-                                  ? `/escola/turma/${turma.id}/visao-geral`
-                                  : `/escola/turma/${turma.id}/chamada/${hoje}`
+                                  ? `/escola/professor/turma/${turma.id}/visao-geral`
+                                  : `/escola/professor/turma/${turma.id}/chamada/${hoje}`
                               }
                             >
                               {status === "lancada" ? "Visão geral da turma" : "Fazer chamada"}
@@ -171,7 +171,7 @@ export default function Painel() {
                       {pendencia.status === "atrasada" ? "Atrasada" : "Hoje"}
                     </Badge>
                     <Button size="sm" asChild>
-                      <Link to={`/escola/turma/${pendencia.turmaId}/chamada/${pendencia.data}`}>
+                      <Link to={`/escola/professor/turma/${pendencia.turmaId}/chamada/${pendencia.data}`}>
                         Lançar
                       </Link>
                     </Button>

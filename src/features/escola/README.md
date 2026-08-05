@@ -6,19 +6,59 @@ ficha completa das crianças e cobrança automática do lançamento.
 Entra por **`/escola`**. É independente do sistema do studio: não usa Supabase
 nem a autenticação existente.
 
-## Telas
+## Duas áreas separadas
+
+Professoras e gestão são portas diferentes: cada uma tem o seu link, o seu login
+e a sua sessão. Entrar em uma não dá acesso à outra — a conta da direção é
+recusada na porta da professora e vice-versa (`autenticar`, em `lib/acesso.ts`).
+
+| Área | Link de acesso | Quem entra |
+| --- | --- | --- |
+| Professora | `/escola/professor/entrar` | Quem dá aula, para lançar a chamada |
+| Gestão | `/escola/gestao/entrar` | Direção e coordenação |
+
+`/escola` é só a portaria: mostra as duas portas e o endereço de cada uma, para
+a escola saber qual link mandar para cada pessoa.
+
+### Telas da professora
 
 | Rota | O que é |
 | --- | --- |
-| `/escola/entrar` | Entrada da professora (ainda sem login — ver abaixo) |
-| `/escola/painel` | Página do Professor: turmas, situação da chamada de hoje e pendências |
-| `/escola/turma/:turmaId` | Visão da turma |
-| `/escola/turma/:turmaId/chamada` | Datas do período, com status lançada / não lançada |
-| `/escola/turma/:turmaId/visao-geral` | Visão geral da turma: frequência de cada criança |
-| `/escola/turma/:turmaId/chamada/:data` | Lançamento da chamada do dia |
-| `/escola/turma/:turmaId/alunos` | Lista de estudantes |
-| `/escola/aluno/:alunoId` | Ficha da criança |
-| `/escola/gestao` | Painel da gestão — **reservado, ainda não construído** |
+| `/escola/professor` | Página do Professor: turmas, chamada de hoje e pendências |
+| `/escola/professor/turma/:turmaId` | Visão da turma |
+| `/escola/professor/turma/:turmaId/chamada` | Datas do período, com status lançada / não lançada |
+| `/escola/professor/turma/:turmaId/chamada/:data` | Lançamento da chamada do dia |
+| `/escola/professor/turma/:turmaId/visao-geral` | Frequência de cada criança |
+| `/escola/professor/turma/:turmaId/alunos` | Lista de estudantes |
+| `/escola/professor/aluno/:alunoId` | Ficha da criança |
+
+### Telas da gestão
+
+| Rota | O que é |
+| --- | --- |
+| `/escola/gestao` | Visão geral: indicadores, notificações de faltas e chamada de hoje |
+| `/escola/gestao/chamadas` | Mapa de lançamentos por dia e turma, e o que está em atraso |
+| `/escola/gestao/turmas` | Turmas, frequência média e quem está em alerta |
+| `/escola/gestao/turma/:turmaId` | Frequência criança a criança |
+| `/escola/gestao/professoras` | Acessos e vínculo professora × turma |
+
+## Acesso e senha
+
+Cada pessoa entra com e-mail e senha (`Usuario` em `types.ts`). A gestão liga e
+desliga o acesso de cada uma na tela *Professoras e acessos* — desligar bloqueia
+a entrada na hora e derruba a sessão aberta.
+
+**Isto ainda não é autenticação de verdade.** A senha está em texto puro na
+carga de demonstração e a conferência acontece no navegador, porque não há
+servidor. Para valer, é preciso:
+
+1. trocar `autenticar` (`lib/acesso.ts`) por uma chamada ao provedor — Supabase
+   Auth, por exemplo — e apagar o campo `senha` de `Usuario`;
+2. trocar o miolo de `hooks/useSessao.tsx` pela sessão do provedor, mantendo o
+   mesmo contrato (`usuario`, `professora`, `carregando`, `entrar`, `sair`);
+3. remover a caixa "Acessos de demonstração" de `components/FormularioEntrada.tsx`;
+4. repetir a checagem de papel no servidor — o guard de rota é conveniência de
+   navegação, não segurança.
 
 ## Como funciona a chamada
 
@@ -67,32 +107,20 @@ volta a ficar novo se a criança faltar de novo (`avisosLidos` guarda o número 
 faltas no momento em que foi visto). A regra está em `avisosDeFaltas`
 (`lib/chamada.ts`) e a mesma contagem alimenta o alerta na visão geral da turma.
 
-## O que ainda não está ligado (de propósito)
+## O que ainda falta na gestão
 
-**Acessos das professoras.** Não existem login e senha ainda. `pages/Entrar.tsx`
-lista as professoras cadastradas e a escolhida fica na sessão. Todo o resto do
-sistema consome `useProfessora()`, que já expõe o mesmo contrato de uma
-autenticação real (`professora`, `carregando`, `entrar`, `sair`). Quando as
-contas existirem:
-
-1. trocar o miolo de `hooks/useProfessora.tsx` pela autenticação (Supabase Auth,
-   por exemplo), casando `Professora.usuarioId` com o usuário logado;
-2. transformar `pages/Entrar.tsx` no formulário de login;
-3. `components/ProfessoraRoute.tsx` já é o ponto do guard — é onde entra também
-   a checagem de papel (professora × gestão).
-
-**Painel da gestão.** Só o esqueleto (`pages/Gestao.tsx`). É lá que vão ficar a
-criação de acessos, o vínculo professora × turma, o calendário e o cadastro das
-crianças. O modelo de dados já suporta: `Turma.professoraIds` define quem dá
-aula em qual turma (uma professora pode ter mais de uma turma, e uma turma mais
-de uma professora).
+O painel já cobre acompanhamento de chamadas, acessos e vínculo professora ×
+turma. Ainda não tem: cadastro de turmas e do calendário letivo, criação de
+novas contas pela tela e edição da ficha das crianças — hoje tudo isso vem da
+carga de dados.
 
 ## Dados
 
 Fictícios e gerados de forma determinística em `data/seed.ts` — mesma semente,
 mesma turma, sempre os mesmos nomes. Nada vem de pessoas reais. São 3 turmas,
-3 professoras e 38 crianças com filiação, responsáveis autorizados, endereço,
-saúde (alergias, restrições, medicações) e observações de rotina.
+3 professoras, 2 contas de gestão e 38 crianças com filiação, responsáveis
+autorizados, endereço, saúde (alergias, restrições, medicações) e observações de
+rotina. Todas as contas usam a senha `SENHA_DEMONSTRACAO`.
 
 A escola "usa o sistema" desde 01/06, então há alguns meses de chamada lançada —
 o suficiente para a frequência significar alguma coisa. A carga deixa lançadas
@@ -112,4 +140,5 @@ npm test
 
 `lib/chamada.test.ts` cobre as alternâncias do "Todos", o status da chamada, a
 geração das datas do calendário, a regra de pendências, a frequência em dias e o
-aviso de faltas para a direção.
+aviso de faltas para a direção. `lib/acesso.test.ts` cobre o login de cada área,
+incluindo a recusa de conta de outra área e de acesso desativado.

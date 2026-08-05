@@ -1,22 +1,13 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import { AlertTriangle, CalendarCheck, PencilLine, Users } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import EscolaLayout from "../components/EscolaLayout";
-import { useEstadoEscola } from "../data/store";
-import { LIMITE_FALTAS_AVISO, ROTULO_TURNO, resumoTurma, turnosDaTurma } from "../lib/chamada";
-import { formatarBr, hojeIso } from "../lib/datas";
+import EscolaLayout from "../../components/EscolaLayout";
+import { TabelaFrequencia } from "../../components/TabelaFrequencia";
+import { useEstadoEscola } from "../../data/store";
+import { LIMITE_FALTAS_AVISO, ROTULO_TURNO, resumoTurma, turnosDaTurma } from "../../lib/chamada";
+import { formatarBr, hojeIso } from "../../lib/datas";
 
 /**
  * Visão geral da turma: é o que a professora vê quando a chamada do dia já está
@@ -28,7 +19,7 @@ export default function VisaoGeralTurma() {
   const hoje = hojeIso();
 
   const turma = estado.turmas.find((t) => t.id === turmaId);
-  if (!turma) return <Navigate to="/escola/painel" replace />;
+  if (!turma) return <Navigate to="/escola/professor" replace />;
 
   const resumo = resumoTurma(estado, turma.id);
   const indicadores = [
@@ -52,13 +43,13 @@ export default function VisaoGeralTurma() {
       titulo="Visão geral da turma"
       subtitulo={`${turma.nome} · ${turma.etapa} · desde ${formatarBr(estado.escola.usoDesde)}`}
       migalhas={[
-        { rotulo: "Início", para: "/escola/painel" },
-        { rotulo: turma.nome, para: `/escola/turma/${turma.id}` },
+        { rotulo: "Início", para: "/escola/professor" },
+        { rotulo: turma.nome, para: `/escola/professor/turma/${turma.id}` },
         { rotulo: "Visão geral" },
       ]}
       acoes={
         <Button variant="outline" size="sm" asChild>
-          <Link to={`/escola/turma/${turma.id}/chamada/${hoje}`}>
+          <Link to={`/escola/professor/turma/${turma.id}/chamada/${hoje}`}>
             <PencilLine className="mr-1.5 h-3.5 w-3.5" />
             Chamada de hoje
           </Link>
@@ -119,73 +110,10 @@ export default function VisaoGeralTurma() {
               .
             </p>
           </div>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[200px]">Estudante</TableHead>
-                  <TableHead className="text-center">Dias presentes</TableHead>
-                  <TableHead className="text-center">Faltas</TableHead>
-                  <TableHead className="min-w-[160px]">Frequência</TableHead>
-                  <TableHead>Última falta</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {resumo.linhas.map((linha) => {
-                  const emAlerta = linha.faltas >= LIMITE_FALTAS_AVISO;
-                  return (
-                    <TableRow key={linha.aluno.id}>
-                      <TableCell>
-                        <Link
-                          to={`/escola/aluno/${linha.aluno.id}`}
-                          className="font-medium hover:underline underline-offset-4"
-                        >
-                          {linha.aluno.nome}
-                        </Link>
-                        {emAlerta && (
-                          <Badge variant="destructive" className="ml-2 text-[10px]">
-                            {linha.faltas} faltas
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center tabular-nums">
-                        {linha.diasPresentes}
-                        <span className="text-muted-foreground">/{linha.diasLancados}</span>
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          "text-center tabular-nums",
-                          emAlerta && "font-semibold text-red-600 dark:text-red-400",
-                        )}
-                      >
-                        {linha.faltas}
-                      </TableCell>
-                      <TableCell>
-                        {linha.percentual === null ? (
-                          <span className="text-sm text-muted-foreground">—</span>
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <Progress value={linha.percentual} className="h-2 w-24" />
-                            <span
-                              className={cn(
-                                "text-sm tabular-nums",
-                                linha.percentual < 75 && "text-red-600 dark:text-red-400",
-                              )}
-                            >
-                              {linha.percentual.toFixed(0)}%
-                            </span>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {linha.ultimaFalta ? formatarBr(linha.ultimaFalta) : "—"}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          <TabelaFrequencia
+            resumo={resumo}
+            linkDoAluno={(alunoId) => `/escola/professor/aluno/${alunoId}`}
+          />
         </CardContent>
       </Card>
     </EscolaLayout>

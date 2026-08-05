@@ -13,10 +13,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import EscolaLayout from "../components/EscolaLayout";
-import { useEstadoEscola } from "../data/store";
-import { LIMITE_FALTAS_AVISO, alunosDaTurma, frequenciaAluno } from "../lib/chamada";
-import { formatarBr, idadeExtenso } from "../lib/datas";
+import EscolaLayout from "../../components/EscolaLayout";
+import { useEstadoEscola } from "../../data/store";
+import { LIMITE_FALTAS_AVISO, alunosDaTurma, frequenciaAluno } from "../../lib/chamada";
+import { formatarBr, idadeExtenso } from "../../lib/datas";
 
 export default function Alunos() {
   const { turmaId = "" } = useParams();
@@ -38,15 +38,15 @@ export default function Alunos() {
     );
   }, [alunos, busca]);
 
-  if (!turma) return <Navigate to="/escola/painel" replace />;
+  if (!turma) return <Navigate to="/escola/professor" replace />;
 
   return (
     <EscolaLayout
       titulo="Estudantes"
       subtitulo={`${turma.nome} · ${filtrados.length} de ${alunos.length}`}
       migalhas={[
-        { rotulo: "Início", para: "/escola/painel" },
-        { rotulo: turma.nome, para: `/escola/turma/${turma.id}` },
+        { rotulo: "Início", para: "/escola/professor" },
+        { rotulo: turma.nome, para: `/escola/professor/turma/${turma.id}` },
         { rotulo: "Estudantes" },
       ]}
     >
@@ -94,7 +94,7 @@ export default function Alunos() {
                       <TableCell className="text-xs text-muted-foreground">{aluno.codigo}</TableCell>
                       <TableCell>
                         <Link
-                          to={`/escola/aluno/${aluno.id}`}
+                          to={`/escola/professor/aluno/${aluno.id}`}
                           className="font-medium hover:underline underline-offset-4"
                         >
                           {aluno.nome}

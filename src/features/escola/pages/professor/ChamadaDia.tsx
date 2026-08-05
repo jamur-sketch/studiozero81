@@ -23,9 +23,9 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-import EscolaLayout from "../components/EscolaLayout";
-import { lancarChamada, reabrirChamada, useEstadoEscola } from "../data/store";
-import { useProfessora } from "../hooks/useProfessora";
+import EscolaLayout from "../../components/EscolaLayout";
+import { lancarChamada, reabrirChamada, useEstadoEscola } from "../../data/store";
+import { useSessao } from "../../hooks/useSessao";
 import {
   LIMITE_FALTAS_AVISO,
   ROTULO_TURNO,
@@ -42,10 +42,10 @@ import {
   resumoChamada,
   statusChamada,
   turnosDaTurma,
-} from "../lib/chamada";
-import { hojeIso, rotuloData } from "../lib/datas";
-import type { EstadoPresenca } from "../lib/chamada";
-import type { RegistroPresenca } from "../types";
+} from "../../lib/chamada";
+import { hojeIso, rotuloData } from "../../lib/datas";
+import type { EstadoPresenca } from "../../lib/chamada";
+import type { RegistroPresenca } from "../../types";
 
 const APARENCIA: Record<EstadoPresenca, { trilho: string; icone: JSX.Element }> = {
   todos: {
@@ -105,7 +105,7 @@ function BotaoPresenca({
 export default function ChamadaDia() {
   const { turmaId = "", data = "" } = useParams();
   const estado = useEstadoEscola();
-  const { professora } = useProfessora();
+  const { professora } = useSessao();
   const navigate = useNavigate();
   const hoje = hojeIso();
 
@@ -134,7 +134,7 @@ export default function ChamadaDia() {
     setAlterado(false);
   }, [alunos, chamadaSalva]);
 
-  if (!turma) return <Navigate to="/escola/painel" replace />;
+  if (!turma) return <Navigate to="/escola/professor" replace />;
 
   const dataInvalida = !/^\d{4}-\d{2}-\d{2}$/.test(data) || data > hoje;
   if (dataInvalida) {
@@ -142,8 +142,8 @@ export default function ChamadaDia() {
       <EscolaLayout
         titulo="Data indisponível"
         migalhas={[
-          { rotulo: "Início", para: "/escola/painel" },
-          { rotulo: turma.nome, para: `/escola/turma/${turma.id}` },
+          { rotulo: "Início", para: "/escola/professor" },
+          { rotulo: turma.nome, para: `/escola/professor/turma/${turma.id}` },
         ]}
       >
         <Card>
@@ -153,7 +153,7 @@ export default function ChamadaDia() {
               conforme o calendário avança.
             </p>
             <Button asChild variant="outline">
-              <Link to={`/escola/turma/${turma.id}/chamada`}>Ver datas disponíveis</Link>
+              <Link to={`/escola/professor/turma/${turma.id}/chamada`}>Ver datas disponíveis</Link>
             </Button>
           </CardContent>
         </Card>
@@ -198,9 +198,9 @@ export default function ChamadaDia() {
       titulo="Chamada"
       subtitulo={`${turma.nome} — ${rotuloData(data)}`}
       migalhas={[
-        { rotulo: "Início", para: "/escola/painel" },
-        { rotulo: turma.nome, para: `/escola/turma/${turma.id}` },
-        { rotulo: "Chamada", para: `/escola/turma/${turma.id}/chamada` },
+        { rotulo: "Início", para: "/escola/professor" },
+        { rotulo: turma.nome, para: `/escola/professor/turma/${turma.id}` },
+        { rotulo: "Chamada", para: `/escola/professor/turma/${turma.id}/chamada` },
         { rotulo: rotuloData(data) },
       ]}
       acoes={
@@ -347,7 +347,7 @@ export default function ChamadaDia() {
                       <TableCell className="text-xs text-muted-foreground hidden sm:table-cell">{aluno.codigo}</TableCell>
                       <TableCell className="px-2 sm:px-4">
                         <Link
-                          to={`/escola/aluno/${aluno.id}`}
+                          to={`/escola/professor/aluno/${aluno.id}`}
                           className="font-medium hover:underline underline-offset-4"
                         >
                           {aluno.nome}

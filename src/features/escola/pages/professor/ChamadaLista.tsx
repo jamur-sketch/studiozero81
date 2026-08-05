@@ -20,8 +20,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import EscolaLayout from "../components/EscolaLayout";
-import { useEstadoEscola } from "../data/store";
+import EscolaLayout from "../../components/EscolaLayout";
+import { useEstadoEscola } from "../../data/store";
 import {
   ROTULO_STATUS,
   alunosDaTurma,
@@ -30,8 +30,8 @@ import {
   resumoChamada,
   statusChamada,
   turnosDaTurma,
-} from "../lib/chamada";
-import { formatarBr, hojeIso, rotuloData } from "../lib/datas";
+} from "../../lib/chamada";
+import { formatarBr, hojeIso, rotuloData } from "../../lib/datas";
 
 export default function ChamadaLista() {
   const { turmaId = "" } = useParams();
@@ -51,7 +51,7 @@ export default function ChamadaLista() {
     return ordem === "decrescente" ? [...lista].reverse() : lista;
   }, [estado, periodoId, ordem, hoje]);
 
-  if (!turma) return <Navigate to="/escola/painel" replace />;
+  if (!turma) return <Navigate to="/escola/professor" replace />;
 
   const alunos = alunosDaTurma(estado, turma.id);
   const alunoIds = alunos.map((a) => a.id);
@@ -65,8 +65,8 @@ export default function ChamadaLista() {
       titulo="Frequência"
       subtitulo={`${turma.nome} · ${turma.etapa}`}
       migalhas={[
-        { rotulo: "Início", para: "/escola/painel" },
-        { rotulo: turma.nome, para: `/escola/turma/${turma.id}` },
+        { rotulo: "Início", para: "/escola/professor" },
+        { rotulo: turma.nome, para: `/escola/professor/turma/${turma.id}` },
         { rotulo: "Chamada" },
       ]}
       acoes={
@@ -147,7 +147,7 @@ export default function ChamadaLista() {
                       <TableRow key={data} className={data === hoje ? "bg-accent/40" : undefined}>
                         <TableCell>
                           <Link
-                            to={`/escola/turma/${turma.id}/chamada/${data}`}
+                            to={`/escola/professor/turma/${turma.id}/chamada/${data}`}
                             className="font-medium hover:underline underline-offset-4"
                           >
                             {rotuloData(data)}
@@ -186,7 +186,7 @@ export default function ChamadaLista() {
                             variant={status === "lancada" ? "outline" : "default"}
                             asChild
                           >
-                            <Link to={`/escola/turma/${turma.id}/chamada/${data}`}>
+                            <Link to={`/escola/professor/turma/${turma.id}/chamada/${data}`}>
                               <PencilLine className="mr-1.5 h-3.5 w-3.5" />
                               {status === "lancada" ? "Revisar" : "Lançar"}
                             </Link>

@@ -4,17 +4,23 @@ import { BrowserRouter, Outlet, Route, Routes, Navigate } from "react-router-dom
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ProfessoraProvider } from "@/features/escola/hooks/useProfessora";
-import { ProfessoraRoute } from "@/features/escola/components/ProfessoraRoute";
-import EscolaEntrar from "@/features/escola/pages/Entrar.tsx";
-import EscolaPainel from "@/features/escola/pages/Painel.tsx";
-import EscolaTurma from "@/features/escola/pages/Turma.tsx";
-import EscolaChamadaLista from "@/features/escola/pages/ChamadaLista.tsx";
-import EscolaChamadaDia from "@/features/escola/pages/ChamadaDia.tsx";
-import EscolaAlunos from "@/features/escola/pages/Alunos.tsx";
-import EscolaVisaoGeral from "@/features/escola/pages/VisaoGeralTurma.tsx";
-import EscolaAluno from "@/features/escola/pages/Aluno.tsx";
-import EscolaGestao from "@/features/escola/pages/Gestao.tsx";
+import { SessaoProvider } from "@/features/escola/hooks/useSessao";
+import { RotaProtegida } from "@/features/escola/components/RotaProtegida";
+import EscolaPortaria from "@/features/escola/pages/Portaria.tsx";
+import ProfEntrar from "@/features/escola/pages/professor/Entrar.tsx";
+import ProfPainel from "@/features/escola/pages/professor/Painel.tsx";
+import ProfTurma from "@/features/escola/pages/professor/Turma.tsx";
+import ProfChamadaLista from "@/features/escola/pages/professor/ChamadaLista.tsx";
+import ProfChamadaDia from "@/features/escola/pages/professor/ChamadaDia.tsx";
+import ProfAlunos from "@/features/escola/pages/professor/Alunos.tsx";
+import ProfVisaoGeral from "@/features/escola/pages/professor/VisaoGeralTurma.tsx";
+import ProfAluno from "@/features/escola/pages/professor/Aluno.tsx";
+import GestaoEntrar from "@/features/escola/pages/gestao/Entrar.tsx";
+import GestaoPainel from "@/features/escola/pages/gestao/Painel.tsx";
+import GestaoChamadas from "@/features/escola/pages/gestao/Chamadas.tsx";
+import GestaoTurmas from "@/features/escola/pages/gestao/Turmas.tsx";
+import GestaoTurma from "@/features/escola/pages/gestao/Turma.tsx";
+import GestaoProfessoras from "@/features/escola/pages/gestao/Professoras.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 // As telas do studio dependem do Supabase já na importação. Carregá-las sob
@@ -56,6 +62,8 @@ const StudioLayout = () => (
   </Suspense>
 );
 
+const protegida = (elemento: React.ReactNode) => <RotaProtegida>{elemento}</RotaProtegida>;
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -63,74 +71,42 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Escola infantil — diário da professora (dados próprios, sem Supabase) */}
+          {/* Escola infantil — duas áreas separadas, cada uma com o seu login */}
+          <Route path="/escola" element={<EscolaPortaria />} />
+
           <Route
-            path="/escola/*"
+            path="/escola/professor/*"
             element={
-              <ProfessoraProvider>
+              <SessaoProvider papel="professora">
                 <Routes>
-                  <Route index element={<Navigate to="/escola/painel" replace />} />
-                  <Route path="entrar" element={<EscolaEntrar />} />
-                  <Route path="gestao" element={<EscolaGestao />} />
-                  <Route
-                    path="painel"
-                    element={
-                      <ProfessoraRoute>
-                        <EscolaPainel />
-                      </ProfessoraRoute>
-                    }
-                  />
-                  <Route
-                    path="turma/:turmaId"
-                    element={
-                      <ProfessoraRoute>
-                        <EscolaTurma />
-                      </ProfessoraRoute>
-                    }
-                  />
-                  <Route
-                    path="turma/:turmaId/alunos"
-                    element={
-                      <ProfessoraRoute>
-                        <EscolaAlunos />
-                      </ProfessoraRoute>
-                    }
-                  />
-                  <Route
-                    path="turma/:turmaId/chamada"
-                    element={
-                      <ProfessoraRoute>
-                        <EscolaChamadaLista />
-                      </ProfessoraRoute>
-                    }
-                  />
-                  <Route
-                    path="turma/:turmaId/visao-geral"
-                    element={
-                      <ProfessoraRoute>
-                        <EscolaVisaoGeral />
-                      </ProfessoraRoute>
-                    }
-                  />
-                  <Route
-                    path="turma/:turmaId/chamada/:data"
-                    element={
-                      <ProfessoraRoute>
-                        <EscolaChamadaDia />
-                      </ProfessoraRoute>
-                    }
-                  />
-                  <Route
-                    path="aluno/:alunoId"
-                    element={
-                      <ProfessoraRoute>
-                        <EscolaAluno />
-                      </ProfessoraRoute>
-                    }
-                  />
+                  <Route path="entrar" element={<ProfEntrar />} />
+                  <Route index element={protegida(<ProfPainel />)} />
+                  <Route path="turma/:turmaId" element={protegida(<ProfTurma />)} />
+                  <Route path="turma/:turmaId/alunos" element={protegida(<ProfAlunos />)} />
+                  <Route path="turma/:turmaId/chamada" element={protegida(<ProfChamadaLista />)} />
+                  <Route path="turma/:turmaId/visao-geral" element={protegida(<ProfVisaoGeral />)} />
+                  <Route path="turma/:turmaId/chamada/:data" element={protegida(<ProfChamadaDia />)} />
+                  <Route path="aluno/:alunoId" element={protegida(<ProfAluno />)} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </ProfessoraProvider>
+              </SessaoProvider>
+            }
+          />
+
+          <Route
+            path="/escola/gestao/*"
+            element={
+              <SessaoProvider papel="gestao">
+                <Routes>
+                  <Route path="entrar" element={<GestaoEntrar />} />
+                  <Route index element={protegida(<GestaoPainel />)} />
+                  <Route path="chamadas" element={protegida(<GestaoChamadas />)} />
+                  <Route path="turmas" element={protegida(<GestaoTurmas />)} />
+                  <Route path="turma/:turmaId" element={protegida(<GestaoTurma />)} />
+                  <Route path="professoras" element={protegida(<GestaoProfessoras />)} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </SessaoProvider>
             }
           />
 

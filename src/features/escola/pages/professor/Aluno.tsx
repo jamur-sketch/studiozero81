@@ -2,16 +2,16 @@ import { Navigate, useParams } from "react-router-dom";
 import { HeartPulse, Home, Phone, ShieldCheck, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import EscolaLayout from "../components/EscolaLayout";
-import { useEstadoEscola } from "../data/store";
+import EscolaLayout from "../../components/EscolaLayout";
+import { useEstadoEscola } from "../../data/store";
 import {
   LIMITE_FALTAS_AVISO,
   ROTULO_TURNO,
   frequenciaAluno,
   turnosDaTurma,
-} from "../lib/chamada";
-import { formatarBr, idadeExtenso } from "../lib/datas";
-import type { Responsavel } from "../types";
+} from "../../lib/chamada";
+import { formatarBr, idadeExtenso } from "../../lib/datas";
+import type { Responsavel } from "../../types";
 
 function Campo({ rotulo, valor }: { rotulo: string; valor?: string | null }) {
   return (
@@ -61,7 +61,7 @@ export default function AlunoPage() {
   const estado = useEstadoEscola();
 
   const aluno = estado.alunos.find((a) => a.id === alunoId);
-  if (!aluno) return <Navigate to="/escola/painel" replace />;
+  if (!aluno) return <Navigate to="/escola/professor" replace />;
 
   const turma = estado.turmas.find((t) => t.id === aluno.turmaId);
   const frequencia = frequenciaAluno(estado, aluno);
@@ -72,11 +72,11 @@ export default function AlunoPage() {
       titulo={aluno.nome}
       subtitulo={`${turma?.nome ?? ""} · Código ${aluno.codigo}`}
       migalhas={[
-        { rotulo: "Início", para: "/escola/painel" },
+        { rotulo: "Início", para: "/escola/professor" },
         ...(turma
           ? [
-              { rotulo: turma.nome, para: `/escola/turma/${turma.id}` },
-              { rotulo: "Estudantes", para: `/escola/turma/${turma.id}/alunos` },
+              { rotulo: turma.nome, para: `/escola/professor/turma/${turma.id}` },
+              { rotulo: "Estudantes", para: `/escola/professor/turma/${turma.id}/alunos` },
             ]
           : []),
         { rotulo: aluno.nome },

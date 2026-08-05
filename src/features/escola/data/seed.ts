@@ -1,8 +1,8 @@
-import type { Aluno, Chamada, EstadoEscola, Professora, Turma } from "../types";
+import type { Aluno, Chamada, EstadoEscola, Professora, Turma, Usuario } from "../types";
 import { chaveChamada } from "../lib/chamada";
 import { diasLetivos, hojeIso, paraIso } from "../lib/datas";
 
-export const VERSAO_ESTADO = 3;
+export const VERSAO_ESTADO = 4;
 
 const ANO_LETIVO = 2026;
 
@@ -162,6 +162,47 @@ const PROFESSORAS: Professora[] = [
     formacao: "Pedagogia — Especialização em Educação Especial",
     usuarioId: null,
   },
+];
+
+/**
+ * Senha única na demonstração para facilitar o teste. Cada conta tem o seu
+ * campo de senha, então senhas individuais funcionam sem mudar nada — só a
+ * carga de demonstração é que repete.
+ */
+export const SENHA_DEMONSTRACAO = "escola2026";
+
+const USUARIOS: Usuario[] = [
+  {
+    id: "usuario-direcao",
+    nome: "Marlene Aguiar Bopp",
+    email: "direcao@escola.exemplo.br",
+    senha: SENHA_DEMONSTRACAO,
+    papel: "gestao",
+    cargo: "Diretora",
+    ativo: true,
+    ultimoAcesso: null,
+  },
+  {
+    id: "usuario-coordenacao",
+    nome: "Rosane Kunz Meireles",
+    email: "coordenacao@escola.exemplo.br",
+    senha: SENHA_DEMONSTRACAO,
+    papel: "gestao",
+    cargo: "Coordenadora pedagógica",
+    ativo: true,
+    ultimoAcesso: null,
+  },
+  ...PROFESSORAS.map((professora) => ({
+    id: `usuario-${professora.id}`,
+    nome: professora.nome,
+    email: professora.email,
+    senha: SENHA_DEMONSTRACAO,
+    papel: "professora" as const,
+    cargo: "Professora",
+    ativo: true,
+    professoraId: professora.id,
+    ultimoAcesso: null,
+  })),
 ];
 
 const TURMAS: Turma[] = [
@@ -384,6 +425,7 @@ export function criarEstadoInicial(hoje = hojeIso()): EstadoEscola {
     },
     periodos,
     feriados,
+    usuarios: USUARIOS,
     professoras: PROFESSORAS,
     turmas: TURMAS,
     alunos,

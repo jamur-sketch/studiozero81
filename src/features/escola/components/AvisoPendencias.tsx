@@ -11,13 +11,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useEstadoEscola } from "../data/store";
-import { useProfessora } from "../hooks/useProfessora";
+import { useSessao } from "../hooks/useSessao";
 import { pendenciasDaProfessora } from "../lib/chamada";
 import { hojeIso, rotuloData } from "../lib/datas";
 
 function usePendencias() {
   const estado = useEstadoEscola();
-  const { professora } = useProfessora();
+  const { professora } = useSessao();
   const hoje = hojeIso();
   const todas = professora ? pendenciasDaProfessora(estado, professora.id, hoje) : [];
   return {
@@ -87,7 +87,7 @@ export function AvisoPendencias() {
                 className="h-7 text-xs"
                 asChild
               >
-                <Link to={`/escola/turma/${pendencia.turmaId}/chamada/${pendencia.data}`}>
+                <Link to={`/escola/professor/turma/${pendencia.turmaId}/chamada/${pendencia.data}`}>
                   {pendencia.turmaNome} · {rotuloData(pendencia.data)}
                 </Link>
               </Button>
@@ -109,7 +109,7 @@ export function AvisoPendencias() {
  * sistema, sempre que houver chamada em aberto.
  */
 export function ModalAvisoEntrada() {
-  const { professora } = useProfessora();
+  const { professora } = useSessao();
   const { todas, atrasadas, deHoje, hoje } = usePendencias();
   const [aberto, setAberto] = useState(false);
 
@@ -181,7 +181,7 @@ export function ModalAvisoEntrada() {
           </Button>
           {primeira && (
             <Button asChild onClick={() => setAberto(false)}>
-              <Link to={`/escola/turma/${primeira.turmaId}/chamada/${primeira.data}`}>
+              <Link to={`/escola/professor/turma/${primeira.turmaId}/chamada/${primeira.data}`}>
                 Lançar agora
               </Link>
             </Button>

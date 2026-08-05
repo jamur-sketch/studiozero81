@@ -1,5 +1,13 @@
 import { Link, useNavigate } from "react-router-dom";
-import { GraduationCap, Home, LogOut, RotateCcw, School, Users } from "lucide-react";
+import {
+  Building2,
+  CalendarCheck,
+  LayoutDashboard,
+  LogOut,
+  RotateCcw,
+  UserCog,
+  Users,
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,16 +22,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { NavLink } from "@/components/NavLink";
-import { useEstadoEscola, reiniciarDemonstracao } from "../data/store";
+import { reiniciarDemonstracao, useEstadoEscola } from "../data/store";
 import { useSessao } from "../hooks/useSessao";
 import { ENTRADA } from "../lib/acesso";
-import { turmasDaProfessora } from "../lib/chamada";
-import { AvisoPendencias } from "./AvisoPendencias";
-
-export interface Migalha {
-  rotulo: string;
-  para?: string;
-}
+import { avisosDeFaltas } from "../lib/chamada";
+import type { Migalha } from "./EscolaLayout";
 
 interface Props {
   titulo: string;
@@ -33,53 +36,21 @@ interface Props {
   children: React.ReactNode;
 }
 
-function Menu() {
+const ITENS = [
+  { titulo: "Visão geral", url: "/escola/gestao", icone: LayoutDashboard, exato: true },
+  { titulo: "Chamadas", url: "/escola/gestao/chamadas", icone: CalendarCheck },
+  { titulo: "Turmas", url: "/escola/gestao/turmas", icone: Users },
+  { titulo: "Professoras e acessos", url: "/escola/gestao/professoras", icone: UserCog },
+];
+
+export default function GestaoLayout({ titulo, subtitulo, migalhas = [], acoes, children }: Props) {
   const estado = useEstadoEscola();
-  const { professora } = useSessao();
-  const turmas = professora ? turmasDaProfessora(estado, professora.id) : [];
+  const { usuario, sair } = useSessao();
+  const navigate = useNavigate();
+  const novos = avisosDeFaltas(estado).filter((aviso) => aviso.novo).length;
 
   const itemClasse =
-    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-white/5 transition-colors";
-
-  return (
-    <nav className="space-y-1">
-      <NavLink
-        to="/escola/professor"
-        end
-        className={itemClasse}
-        activeClassName="!text-sidebar-foreground !bg-white/10"
-      >
-        <Home className="h-[18px] w-[18px]" />
-        <span>Página do Professor</span>
-      </NavLink>
-
-      <p className="px-3 pt-4 pb-1 text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/35 font-semibold">
-        Minhas Turmas
-      </p>
-      {turmas.map((turma) => (
-        <NavLink
-          key={turma.id}
-          to={`/escola/professor/turma/${turma.id}`}
-          className={itemClasse}
-          activeClassName="!text-sidebar-foreground !bg-white/10"
-        >
-          <Users className="h-[18px] w-[18px]" />
-          <span className="truncate">{turma.nome}</span>
-        </NavLink>
-      ))}
-      {turmas.length === 0 && (
-        <p className="px-3 text-xs text-sidebar-foreground/40">
-          Nenhuma turma vinculada.
-        </p>
-      )}
-    </nav>
-  );
-}
-
-export default function EscolaLayout({ titulo, subtitulo, migalhas = [], acoes, children }: Props) {
-  const estado = useEstadoEscola();
-  const { professora, usuario, sair } = useSessao();
-  const navigate = useNavigate();
+    "flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-white/5 transition-colors";
 
   const iniciais = usuario?.nome
     .split(" ")
@@ -91,23 +62,41 @@ export default function EscolaLayout({ titulo, subtitulo, migalhas = [], acoes, 
     <div className="min-h-screen flex w-full bg-muted/30">
       <aside className="hidden md:flex w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground">
         <div className="px-5 py-5 border-b border-sidebar-border/50">
-          <Link to="/escola/professor" className="flex items-center gap-3">
+          <Link to="/escola/gestao" className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
-              <School className="h-5 w-5" />
+              <Building2 className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <span className="block text-sm font-bold tracking-tight truncate">
+              <span className="block text-sm font-bold tracking-tight truncate">Gestão</span>
+              <span className="block text-[10px] uppercase tracking-[0.2em] text-sidebar-foreground/40 font-medium truncate">
                 {estado.escola.nome}
-              </span>
-              <span className="block text-[10px] uppercase tracking-[0.2em] text-sidebar-foreground/40 font-medium">
-                Ano letivo {estado.escola.anoLetivo}
               </span>
             </div>
           </Link>
         </div>
 
         <div className="flex-1 overflow-y-auto p-3">
-          <Menu />
+          <nav className="space-y-1">
+            {ITENS.map((item) => (
+              <NavLink
+                key={item.url}
+                to={item.url}
+                end={item.exato}
+                className={itemClasse}
+                activeClassName="!text-sidebar-foreground !bg-white/10"
+              >
+                <span className="flex items-center gap-3">
+                  <item.icone className="h-[18px] w-[18px]" />
+                  {item.titulo}
+                </span>
+                {item.exato && novos > 0 && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">
+                    {novos}
+                  </span>
+                )}
+              </NavLink>
+            ))}
+          </nav>
         </div>
 
         <div className="p-4">
@@ -115,21 +104,19 @@ export default function EscolaLayout({ titulo, subtitulo, migalhas = [], acoes, 
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center text-sm font-semibold shrink-0">
-                {iniciais || <GraduationCap className="h-4 w-4" />}
+                {iniciais || <Building2 className="h-4 w-4" />}
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-semibold truncate">
-                  {usuario?.nome ?? "Professora"}
-                </span>
-                <span className="text-[11px] text-sidebar-foreground/40">
-                  {usuario?.cargo ?? "Professora"}
+                <span className="text-sm font-semibold truncate">{usuario?.nome}</span>
+                <span className="text-[11px] text-sidebar-foreground/40 truncate">
+                  {usuario?.cargo}
                 </span>
               </div>
             </div>
             <button
               onClick={() => {
                 sair();
-                navigate(ENTRADA.professora);
+                navigate(ENTRADA.gestao);
               }}
               className="text-sidebar-foreground/40 hover:text-red-400 transition-colors p-1.5 rounded-md hover:bg-white/5 shrink-0"
               title="Sair"
@@ -146,8 +133,8 @@ export default function EscolaLayout({ titulo, subtitulo, migalhas = [], acoes, 
               <AlertDialogHeader>
                 <AlertDialogTitle>Reiniciar os dados de demonstração?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  As chamadas lançadas por você voltam ao estado inicial e as fichas fictícias são
-                  recriadas. Serve para testar o sistema do zero.
+                  Chamadas, vínculos de turma e acessos voltam ao estado inicial. Serve para testar
+                  o sistema do zero.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -186,27 +173,36 @@ export default function EscolaLayout({ titulo, subtitulo, migalhas = [], acoes, 
             </div>
             <div className="flex items-center gap-2">{acoes}</div>
           </div>
+
+          {/* Navegação de celular: a barra lateral só existe no desktop. */}
           <div className="md:hidden mt-3 flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/escola/professor">Início</Link>
-            </Button>
+            {ITENS.map((item) => (
+              <Button key={item.url} variant="outline" size="sm" asChild>
+                <Link to={item.url}>
+                  {item.titulo}
+                  {item.exato && novos > 0 && (
+                    <span className="ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                      {novos}
+                    </span>
+                  )}
+                </Link>
+              </Button>
+            ))}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => {
                 sair();
-                navigate(ENTRADA.professora);
+                navigate(ENTRADA.gestao);
               }}
             >
+              <LogOut className="mr-1.5 h-3.5 w-3.5" />
               Sair
             </Button>
           </div>
         </header>
 
-        <div className="p-4 md:p-8 space-y-6">
-          <AvisoPendencias />
-          {children}
-        </div>
+        <div className="p-4 md:p-8 space-y-6">{children}</div>
       </main>
     </div>
   );

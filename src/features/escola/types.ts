@@ -22,6 +22,29 @@ export interface PeriodoLetivo {
   fim: string; // YYYY-MM-DD
 }
 
+export type PapelUsuario = "professora" | "gestao";
+
+/**
+ * Conta de acesso. Cada pessoa entra pelo link da sua área com e-mail e senha.
+ *
+ * ATENÇÃO: `senha` em texto puro só existe porque ainda não há servidor — é
+ * carga de demonstração. Ao ligar a autenticação de verdade, este campo sai e
+ * a verificação passa a ser do provedor (ver README do módulo).
+ */
+export interface Usuario {
+  id: string;
+  nome: string;
+  email: string;
+  senha: string;
+  papel: PapelUsuario;
+  /** "Diretora", "Coordenadora pedagógica"… */
+  cargo: string;
+  ativo: boolean;
+  /** Preenchido quando o papel é professora. */
+  professoraId?: string;
+  ultimoAcesso: string | null;
+}
+
 export interface Professora {
   id: string;
   nome: string;
@@ -107,6 +130,7 @@ export interface EstadoEscola {
   escola: Escola;
   periodos: PeriodoLetivo[];
   feriados: { data: string; descricao: string }[];
+  usuarios: Usuario[];
   professoras: Professora[];
   turmas: Turma[];
   alunos: Aluno[];

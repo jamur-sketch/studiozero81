@@ -89,6 +89,36 @@ export function lancarChamada(
   });
 }
 
+/** Guarda o momento do último acesso, para a gestão acompanhar. */
+export function registrarAcesso(usuarioId: string) {
+  definirEstado({
+    ...estado,
+    usuarios: estado.usuarios.map((usuario) =>
+      usuario.id === usuarioId ? { ...usuario, ultimoAcesso: new Date().toISOString() } : usuario,
+    ),
+  });
+}
+
+/** A gestão liga e desliga o acesso de uma pessoa. */
+export function definirAcessoAtivo(usuarioId: string, ativo: boolean) {
+  definirEstado({
+    ...estado,
+    usuarios: estado.usuarios.map((usuario) =>
+      usuario.id === usuarioId ? { ...usuario, ativo } : usuario,
+    ),
+  });
+}
+
+/** A gestão define quem dá aula em cada turma. */
+export function definirProfessorasDaTurma(turmaId: string, professoraIds: string[]) {
+  definirEstado({
+    ...estado,
+    turmas: estado.turmas.map((turma) =>
+      turma.id === turmaId ? { ...turma, professoraIds } : turma,
+    ),
+  });
+}
+
 /** A direção marca o aviso de faltas como visto, no número atual de faltas. */
 export function marcarAvisoVisto(alunoId: string, faltas: number) {
   definirEstado({
