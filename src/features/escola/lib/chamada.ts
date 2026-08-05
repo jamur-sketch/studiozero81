@@ -314,6 +314,33 @@ export function estaTudoMarcado(
   return todosMarcados(registros, alunoIds, turnos);
 }
 
+/**
+ * Estado de um conjunto de presenças (a linha "Todos" de uma criança, ou a
+ * coluna de um turno na turma inteira). O caso `parcial` precisa existir: sem
+ * ele, uma única falta pinta o controle inteiro de vermelho e parece que
+ * ninguém veio.
+ */
+export type EstadoPresenca = "todos" | "nenhum" | "parcial";
+
+export function estadoDoGrupo(
+  registros: Registros,
+  alunoIds: string[],
+  turnos: Turno[],
+): EstadoPresenca {
+  let marcados = 0;
+  let total = 0;
+  for (const id of alunoIds) {
+    const registro = registros[id] ?? registroVazio();
+    for (const turno of turnos) {
+      total += 1;
+      if (registro[turno]) marcados += 1;
+    }
+  }
+  if (total === 0 || marcados === total) return "todos";
+  if (marcados === 0) return "nenhum";
+  return "parcial";
+}
+
 export function resumoChamada(
   registros: Registros,
   alunoIds: string[],

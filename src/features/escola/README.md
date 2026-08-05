@@ -30,9 +30,12 @@ nem a autenticação existente.
   criança. A linha *Todos os estudantes*, no topo, faz o mesmo para a turma
   inteira: por coluna de turno ou tudo de uma vez, no cruzamento.
 - Toda alternância é "se está tudo marcado, desmarca; senão, marca tudo".
-- **Frequência entre o nome e os turnos**: quantos dias a criança veio sobre os
-  dias já lançados (`19/36`), com o percentual embaixo. Em tela de celular ela
-  aparece como uma linha abaixo do nome, para os botões caberem.
+- **Três estados, não dois** (`estadoDoGrupo`): verde (tudo marcado), vermelho
+  (nada marcado) e âmbar (parte marcada). Sem o âmbar, uma criança sem tarde
+  pintava a coluna inteira de vermelho e parecia que a turma toda faltou. Há uma
+  legenda acima da tabela.
+- **Frequência em coluna própria**, entre o nome e os turnos: quantos dias a
+  criança veio sobre os dias já lançados (`19/36`), com o percentual embaixo.
 - Falta é o dia inteiro: ausente nos dois turnos. Meio período conta como dia
   presente.
 - **As datas aparecem sozinhas conforme o calendário vira**: são os dias úteis

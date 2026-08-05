@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Check, MessageSquare, Save, Undo2, X } from "lucide-react";
+import { ArrowLeft, Check, MessageSquare, Minus, Save, Undo2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -36,7 +36,7 @@ import {
   alternarTurno,
   alunosDaTurma,
   chaveChamada,
-  estaTudoMarcado,
+  estadoDoGrupo,
   frequenciaAluno,
   registroVazio,
   resumoChamada,
@@ -44,14 +44,45 @@ import {
   turnosDaTurma,
 } from "../lib/chamada";
 import { hojeIso, rotuloData } from "../lib/datas";
+import type { EstadoPresenca } from "../lib/chamada";
 import type { RegistroPresenca } from "../types";
 
+const APARENCIA: Record<EstadoPresenca, { trilho: string; icone: JSX.Element }> = {
+  todos: {
+    trilho: "justify-end border-emerald-600 bg-emerald-500",
+    icone: <Check className="h-3.5 w-3.5 text-emerald-600" />,
+  },
+  nenhum: {
+    trilho: "justify-start border-red-600 bg-red-500",
+    icone: <X className="h-3.5 w-3.5 text-red-600" />,
+  },
+  // Parte marcada: nem presente nem falta. Fica no meio, em âmbar.
+  parcial: {
+    trilho: "justify-center border-amber-500 bg-amber-400",
+    icone: <Minus className="h-3.5 w-3.5 text-amber-600" />,
+  },
+};
+
+const CLASSE_PASTILHA =
+  "inline-flex h-7 w-10 sm:w-[52px] items-center rounded-full border transition-colors";
+
+/** Só o visual — usado também na legenda, onde não há o que clicar. */
+function PastilhaPresenca({ estado }: { estado: EstadoPresenca }) {
+  return (
+    <span className={cn(CLASSE_PASTILHA, APARENCIA[estado].trilho)} aria-hidden>
+      <span className="mx-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white">
+        {APARENCIA[estado].icone}
+      </span>
+    </span>
+  );
+}
+
 function BotaoPresenca({
-  marcado,
+  estado,
   onClick,
   titulo,
 }: {
-  marcado: boolean;
+  estado: EstadoPresenca;
   onClick: () => void;
   titulo: string;
 }) {
@@ -60,21 +91,12 @@ function BotaoPresenca({
       type="button"
       onClick={onClick}
       title={titulo}
-      aria-pressed={marcado}
+      aria-pressed={estado === "todos"}
       aria-label={titulo}
-      className={cn(
-        "inline-flex h-7 w-[52px] items-center rounded-full border transition-colors",
-        marcado
-          ? "justify-end border-emerald-600 bg-emerald-500"
-          : "justify-start border-red-600 bg-red-500",
-      )}
+      className={cn(CLASSE_PASTILHA, APARENCIA[estado].trilho)}
     >
-      <span className="mx-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white text-[11px]">
-        {marcado ? (
-          <Check className="h-3.5 w-3.5 text-emerald-600" />
-        ) : (
-          <X className="h-3.5 w-3.5 text-red-600" />
-        )}
+      <span className="mx-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-white">
+        {APARENCIA[estado].icone}
       </span>
     </button>
   );
@@ -141,7 +163,6 @@ export default function ChamadaDia() {
 
   const status = statusChamada(chamadaSalva, data, hoje);
   const resumo = resumoChamada(registros, alunoIds, turnos);
-  const tudoMarcado = estaTudoMarcado(registros, alunoIds, turnos);
 
   const aplicar = (novos: Record<string, RegistroPresenca>) => {
     setRegistros(novos);
@@ -256,75 +277,88 @@ export default function ChamadaDia() {
 
       <Card>
         <CardContent className="p-0">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b px-4 py-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-2">
+              <PastilhaPresenca estado="todos" />
+              Presente
+            </span>
+            <span className="flex items-center gap-2">
+              <PastilhaPresenca estado="nenhum" />
+              Falta
+            </span>
+            <span className="flex items-center gap-2">
+              <PastilhaPresenca estado="parcial" />
+              <span>
+                Parte do dia
+                <span className="hidden sm:inline">
+                  {" "}
+                  — em <strong className="font-medium">Todos</strong> e no cabeçalho, quer dizer que
+                  só parte está marcada
+                </span>
+              </span>
+            </span>
+          </div>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-20 hidden sm:table-cell">Código</TableHead>
-                  <TableHead className="min-w-[140px] sm:min-w-[220px]">Estudante</TableHead>
-                  <TableHead className="w-24 text-center hidden md:table-cell">Frequência</TableHead>
+                  <TableHead className="min-w-[100px] sm:min-w-[220px] px-2 sm:px-4">Estudante</TableHead>
+                  <TableHead className="w-14 sm:w-24 text-center px-0.5 sm:px-4">Frequência</TableHead>
                   {turnos.map((turno) => (
-                    <TableHead key={turno} className="w-[76px] sm:w-24 text-center px-1 sm:px-4">
+                    <TableHead key={turno} className="w-12 sm:w-24 text-center px-0.5 sm:px-4">
                       {ROTULO_TURNO[turno]}
                     </TableHead>
                   ))}
-                  <TableHead className="w-[76px] sm:w-24 text-center px-1 sm:px-4">Todos</TableHead>
-                  <TableHead className="w-16 sm:w-24 text-center px-1 sm:px-4">Observações</TableHead>
+                  <TableHead className="w-12 sm:w-24 text-center px-0.5 sm:px-4">Todos</TableHead>
+                  <TableHead className="w-10 sm:w-24 text-center px-0.5 sm:px-4">Obs.</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {/* Linha de atalhos: marca/desmarca a turma inteira. */}
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
                   <TableCell className="text-muted-foreground hidden sm:table-cell">#</TableCell>
-                  <TableCell className="font-medium">Todos os estudantes</TableCell>
-                  <TableCell className="hidden md:table-cell" />
+                  <TableCell className="font-medium px-2 sm:px-4">Todos os estudantes</TableCell>
+                  <TableCell />
                   {turnos.map((turno) => (
-                    <TableCell key={turno} className="text-center px-1 sm:px-4">
+                    <TableCell key={turno} className="text-center px-0.5 sm:px-4">
                       <BotaoPresenca
-                        marcado={estaTudoMarcado(registros, alunoIds, [turno])}
+                        estado={estadoDoGrupo(registros, alunoIds, [turno])}
                         onClick={() => aplicar(alternarColunaTurno(registros, alunoIds, turno))}
                         titulo={`Marcar/desmarcar ${ROTULO_TURNO[turno]} para toda a turma`}
                       />
                     </TableCell>
                   ))}
-                  <TableCell className="text-center px-1 sm:px-4">
+                  <TableCell className="text-center px-0.5 sm:px-4">
                     <BotaoPresenca
-                      marcado={tudoMarcado}
+                      estado={estadoDoGrupo(registros, alunoIds, turnos)}
                       onClick={() => aplicar(alternarTudo(registros, alunoIds, turnos))}
                       titulo="Marcar/desmarcar todos os turnos de toda a turma"
                     />
                   </TableCell>
-                  <TableCell className="px-1 sm:px-4" />
+                  <TableCell className="px-0.5 sm:px-4" />
                 </TableRow>
 
                 {alunos.map((aluno) => {
                   const registro = registros[aluno.id] ?? registroVazio();
                   const frequencia = frequenciaAluno(estado, aluno);
-                  const marcadoTodos = turnos.every((turno) => registro[turno]);
                   return (
                     <TableRow key={aluno.id}>
                       <TableCell className="text-xs text-muted-foreground hidden sm:table-cell">{aluno.codigo}</TableCell>
-                      <TableCell>
+                      <TableCell className="px-2 sm:px-4">
                         <Link
                           to={`/escola/aluno/${aluno.id}`}
                           className="font-medium hover:underline underline-offset-4"
                         >
                           {aluno.nome}
                         </Link>
-                        {/* Em tela estreita a frequência vem embaixo do nome,
-                            para os botões de presença caberem sem rolar. */}
-                        <span className="block md:hidden text-xs text-muted-foreground">
-                          {frequencia.diasLancados === 0
-                            ? "sem dias lançados"
-                            : `veio ${frequencia.diasPresentes} de ${frequencia.diasLancados} dias`}
-                        </span>
                         {registro.observacao && (
                           <span className="block text-xs text-muted-foreground truncate max-w-[260px]">
                             {registro.observacao}
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-center hidden md:table-cell">
+                      <TableCell className="text-center px-0.5 sm:px-4">
                         {frequencia.diasLancados === 0 ? (
                           <span className="text-xs text-muted-foreground">—</span>
                         ) : (
@@ -348,22 +382,22 @@ export default function ChamadaDia() {
                         )}
                       </TableCell>
                       {turnos.map((turno) => (
-                        <TableCell key={turno} className="text-center px-1 sm:px-4">
+                        <TableCell key={turno} className="text-center px-0.5 sm:px-4">
                           <BotaoPresenca
-                            marcado={registro[turno]}
+                            estado={registro[turno] ? "todos" : "nenhum"}
                             onClick={() => aplicar(alternarTurno(registros, aluno.id, turno))}
                             titulo={`${aluno.nome} — ${ROTULO_TURNO[turno]}`}
                           />
                         </TableCell>
                       ))}
-                      <TableCell className="text-center px-1 sm:px-4">
+                      <TableCell className="text-center px-0.5 sm:px-4">
                         <BotaoPresenca
-                          marcado={marcadoTodos}
+                          estado={estadoDoGrupo(registros, [aluno.id], turnos)}
                           onClick={() => aplicar(alternarTodosDoAluno(registros, aluno.id, turnos))}
                           titulo={`Marcar/desmarcar todos os turnos de ${aluno.nome}`}
                         />
                       </TableCell>
-                      <TableCell className="text-center px-1 sm:px-4">
+                      <TableCell className="text-center px-0.5 sm:px-4">
                         <Button
                           variant={registro.observacao ? "secondary" : "ghost"}
                           size="icon"

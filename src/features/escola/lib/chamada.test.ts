@@ -8,6 +8,7 @@ import {
   alternarTurno,
   avisosDeFaltas,
   estaTudoMarcado,
+  estadoDoGrupo,
   frequenciaAluno,
   pendenciasDaProfessora,
   resumoChamada,
@@ -67,6 +68,23 @@ describe("alternância de presença", () => {
   it("basta um turno marcado para o aluno contar como presente no dia", () => {
     const meioPeriodo = alternarTurno(registros(), "a1", "tarde");
     expect(resumoChamada(meioPeriodo, ALUNOS, TURNOS)).toEqual({ presentes: 3, ausentes: 0 });
+  });
+
+  it("o grupo fica parcial quando só uma parte está marcada", () => {
+    // uma criança sem tarde não pode pintar a coluna inteira de vermelho
+    const umaFalta = alternarTurno(registros(), "a2", "tarde");
+    expect(estadoDoGrupo(umaFalta, ALUNOS, ["tarde"])).toBe("parcial");
+    expect(estadoDoGrupo(umaFalta, ALUNOS, ["manha"])).toBe("todos");
+    expect(estadoDoGrupo(umaFalta, ALUNOS, TURNOS)).toBe("parcial");
+
+    // e a linha "Todos" dela mostra meio período, não falta
+    expect(estadoDoGrupo(umaFalta, ["a2"], TURNOS)).toBe("parcial");
+    expect(estadoDoGrupo(umaFalta, ["a1"], TURNOS)).toBe("todos");
+  });
+
+  it("o grupo só fica vermelho quando nada está marcado", () => {
+    expect(estadoDoGrupo(registros(false), ALUNOS, TURNOS)).toBe("nenhum");
+    expect(estadoDoGrupo(registros(true), ALUNOS, TURNOS)).toBe("todos");
   });
 
   it("as funções de alternância não mutam o objeto original", () => {
