@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Construction, Lock } from "lucide-react";
+import { AlertTriangle, Bell, CheckCheck, Construction, Lock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -10,8 +11,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useEstadoEscola } from "../data/store";
-import { ROTULO_TURNO, alunosDaTurma, turnosDaTurma } from "../lib/chamada";
+import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
+import { marcarAvisoVisto, useEstadoEscola } from "../data/store";
+import {
+  LIMITE_FALTAS_AVISO,
+  ROTULO_TURNO,
+  alunosDaTurma,
+  avisosDeFaltas,
+  turnosDaTurma,
+} from "../lib/chamada";
+import { formatarBr } from "../lib/datas";
 
 /**
  * Painel da gestão — ainda não construído, conforme combinado.
@@ -22,6 +32,8 @@ import { ROTULO_TURNO, alunosDaTurma, turnosDaTurma } from "../lib/chamada";
  */
 export default function Gestao() {
   const estado = useEstadoEscola();
+  const avisos = avisosDeFaltas(estado);
+  const novos = avisos.filter((aviso) => aviso.novo).length;
 
   return (
     <div className="min-h-screen bg-muted/30 p-4 md:p-8">
@@ -37,6 +49,103 @@ export default function Gestao() {
             <Link to="/escola/entrar">Área da professora</Link>
           </Button>
         </div>
+
+        <Card>
+          <CardContent className="p-0">
+            <div className="px-5 py-4 border-b flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Bell className="h-5 w-5 text-muted-foreground" />
+                  {novos > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                      {novos}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h2 className="font-semibold">Notificações da direção</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Aviso automático quando uma criança chega a {LIMITE_FALTAS_AVISO} faltas.
+                  </p>
+                </div>
+              </div>
+              {avisos.length > 0 && novos > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    avisos.forEach((aviso) => marcarAvisoVisto(aviso.alunoId, aviso.faltas));
+                    toast({
+                      title: "Avisos marcados como vistos",
+                      description: "Voltam a aparecer como novos se a criança faltar de novo.",
+                    });
+                  }}
+                >
+                  <CheckCheck className="mr-1.5 h-3.5 w-3.5" />
+                  Marcar todos como vistos
+                </Button>
+              )}
+            </div>
+
+            {avisos.length === 0 ? (
+              <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+                Nenhuma criança atingiu {LIMITE_FALTAS_AVISO} faltas. Nada a comunicar.
+              </p>
+            ) : (
+              <div className="divide-y">
+                {avisos.map((aviso) => (
+                  <div
+                    key={aviso.alunoId}
+                    className={cn(
+                      "flex flex-wrap items-center justify-between gap-3 px-5 py-4",
+                      aviso.novo && "bg-red-50/60 dark:bg-red-950/20",
+                    )}
+                  >
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400">
+                        <AlertTriangle className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 font-medium">
+                          {aviso.alunoNome}
+                          {aviso.novo && (
+                            <Badge variant="destructive" className="text-[10px]">
+                              Novo
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {aviso.turmaNome} · <strong>{aviso.faltas} faltas</strong> em{" "}
+                          {aviso.diasLancados} dias lançados
+                          {aviso.percentual !== null && ` · frequência de ${aviso.percentual.toFixed(0)}%`}
+                        </p>
+                        {aviso.ultimaFalta && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Última falta em {formatarBr(aviso.ultimaFalta)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={`/escola/turma/${aviso.turmaId}/visao-geral`}>Ver turma</Link>
+                      </Button>
+                      {aviso.novo && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => marcarAvisoVisto(aviso.alunoId, aviso.faltas)}
+                        >
+                          Marcar como visto
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardContent className="p-6 flex gap-4">

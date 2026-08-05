@@ -1,5 +1,5 @@
 import { Link, Navigate, useParams } from "react-router-dom";
-import { CalendarDays, ClipboardCheck, Users } from "lucide-react";
+import { BarChart3, CalendarDays, ClipboardCheck, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import EscolaLayout from "../components/EscolaLayout";
@@ -43,6 +43,12 @@ export default function TurmaPage() {
       para: `/escola/turma/${turma.id}/alunos`,
     },
     {
+      titulo: "Visão geral da turma",
+      descricao: "Frequência de cada criança no período",
+      icone: BarChart3,
+      para: `/escola/turma/${turma.id}/visao-geral`,
+    },
+    {
       titulo: "Chamada de hoje",
       descricao: rotuloData(hoje),
       icone: CalendarDays,
@@ -67,7 +73,7 @@ export default function TurmaPage() {
         )
       }
     >
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {atalhos.map((atalho) => (
           <Link key={atalho.titulo} to={atalho.para}>
             <Card className="h-full hover:border-foreground/20 transition-colors">

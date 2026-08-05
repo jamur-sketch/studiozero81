@@ -4,7 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import EscolaLayout from "../components/EscolaLayout";
 import { useEstadoEscola } from "../data/store";
-import { ROTULO_TURNO, faltasAluno, frequenciaAluno, turnosDaTurma } from "../lib/chamada";
+import {
+  LIMITE_FALTAS_AVISO,
+  ROTULO_TURNO,
+  frequenciaAluno,
+  turnosDaTurma,
+} from "../lib/chamada";
 import { formatarBr, idadeExtenso } from "../lib/datas";
 import type { Responsavel } from "../types";
 
@@ -78,17 +83,20 @@ export default function AlunoPage() {
       ]}
       acoes={
         <div className="flex items-center gap-2">
-          <Badge variant="outline">
-            Faltas: {faltasAluno(estado, aluno)}
+          <Badge
+            variant={frequencia.faltas >= LIMITE_FALTAS_AVISO ? "destructive" : "outline"}
+          >
+            Faltas: {frequencia.faltas}
           </Badge>
           <Badge
             className={
-              frequencia !== null && frequencia < 75
+              (frequencia.percentual ?? 100) < 75
                 ? "bg-red-600 hover:bg-red-600"
                 : "bg-emerald-600 hover:bg-emerald-600"
             }
           >
-            Frequência: {frequencia === null ? "—" : `${frequencia.toFixed(0)}%`}
+            Veio {frequencia.diasPresentes} de {frequencia.diasLancados} dias
+            {frequencia.percentual !== null && ` · ${frequencia.percentual.toFixed(0)}%`}
           </Badge>
         </div>
       }

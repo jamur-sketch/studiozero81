@@ -14,6 +14,7 @@ nem a autenticação existente.
 | `/escola/painel` | Página do Professor: turmas, situação da chamada de hoje e pendências |
 | `/escola/turma/:turmaId` | Visão da turma |
 | `/escola/turma/:turmaId/chamada` | Datas do período, com status lançada / não lançada |
+| `/escola/turma/:turmaId/visao-geral` | Visão geral da turma: frequência de cada criança |
 | `/escola/turma/:turmaId/chamada/:data` | Lançamento da chamada do dia |
 | `/escola/turma/:turmaId/alunos` | Lista de estudantes |
 | `/escola/aluno/:alunoId` | Ficha da criança |
@@ -21,17 +22,24 @@ nem a autenticação existente.
 
 ## Como funciona a chamada
 
-- **Turnos, não períodos.** A grade tem uma coluna por turno da turma
-  (`Manhã`, `Tarde`) em vez de 1º/2º/3º período. Turma integral mostra as duas.
-- **Coluna "Todos"** em cada linha marca/desmarca todos os turnos daquela
+- **Turnos, não períodos.** A grade tem `Manhã` e `Tarde` em vez de 1º/2º/3º
+  período — sempre os dois, em qualquer turma (`TURNOS_CHAMADA`), porque a
+  criança pode ficar meio turno ou o dia todo e quem registra isso é a
+  professora.
+- **Coluna "Todos"** em cada linha marca/desmarca os dois turnos daquela
   criança. A linha *Todos os estudantes*, no topo, faz o mesmo para a turma
   inteira: por coluna de turno ou tudo de uma vez, no cruzamento.
 - Toda alternância é "se está tudo marcado, desmarca; senão, marca tudo".
-- Falta no dia = ausente em todos os turnos. Ausente em só um turno conta meia
-  falta e mantém a criança como presente no dia.
+- **Frequência entre o nome e os turnos**: quantos dias a criança veio sobre os
+  dias já lançados (`19/36`), com o percentual embaixo. Em tela de celular ela
+  aparece como uma linha abaixo do nome, para os botões caberem.
+- Falta é o dia inteiro: ausente nos dois turnos. Meio período conta como dia
+  presente.
 - **As datas aparecem sozinhas conforme o calendário vira**: são os dias úteis
   do período letivo, sem feriados, nunca à frente de hoje e nunca antes de
   `escola.usoDesde` (data em que a escola começou a usar o sistema).
+- Com a chamada do dia já lançada, o painel manda a professora para a **visão
+  geral da turma** em vez de reabrir o mesmo dia.
 
 ## O aviso de lançamento diário
 
@@ -46,6 +54,15 @@ A chamada é obrigatória todo dia letivo. Enquanto não for salva:
 Um dia só sai da cobrança depois que a professora clica em **Lançar chamada** —
 abrir a tela não conta. A regra está em `pendenciasDaProfessora`
 (`lib/chamada.ts`) e é coberta por testes.
+
+## Aviso de faltas para a direção
+
+Quando qualquer criança chega a **5 faltas** (`LIMITE_FALTAS_AVISO`), um aviso
+aparece no painel da gestão, com contador no sino, a turma, o total de faltas, a
+frequência e a data da última falta. A direção pode marcar como visto; o aviso
+volta a ficar novo se a criança faltar de novo (`avisosLidos` guarda o número de
+faltas no momento em que foi visto). A regra está em `avisosDeFaltas`
+(`lib/chamada.ts`) e a mesma contagem alimenta o alerta na visão geral da turma.
 
 ## O que ainda não está ligado (de propósito)
 
@@ -74,9 +91,12 @@ mesma turma, sempre os mesmos nomes. Nada vem de pessoas reais. São 3 turmas,
 3 professoras e 38 crianças com filiação, responsáveis autorizados, endereço,
 saúde (alergias, restrições, medicações) e observações de rotina.
 
-A carga de demonstração deixa lançadas todas as chamadas do período menos os
-dois últimos dias anteriores a hoje — assim o aviso de pendência sempre aparece.
-O botão "Reiniciar dados de demonstração", na barra lateral, recria tudo.
+A escola "usa o sistema" desde 01/06, então há alguns meses de chamada lançada —
+o suficiente para a frequência significar alguma coisa. A carga deixa lançadas
+todas as chamadas menos os dois últimos dias anteriores a hoje, para o aviso de
+pendência sempre aparecer, e dá a uma criança de cada turma um histórico de
+infrequência, para a direção ter o que ver no aviso de faltas. O botão
+"Reiniciar dados de demonstração", na barra lateral, recria tudo.
 
 Persistência: `localStorage` (`data/store.ts`), chave `escola:estado:v1`. Trocar
 por um banco é mexer só nesse arquivo — as telas não conhecem o storage.
@@ -88,4 +108,5 @@ npm test
 ```
 
 `lib/chamada.test.ts` cobre as alternâncias do "Todos", o status da chamada, a
-geração das datas do calendário e a regra de pendências.
+geração das datas do calendário, a regra de pendências, a frequência em dias e o
+aviso de faltas para a direção.

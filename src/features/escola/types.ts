@@ -112,4 +112,10 @@ export interface EstadoEscola {
   alunos: Aluno[];
   /** Chave: `${turmaId}|${data}` */
   chamadas: Record<string, Chamada>;
+  /**
+   * Avisos de falta que a direção já marcou como vistos: aluno → número de
+   * faltas na hora em que foi visto. Se faltar de novo, o aviso volta a ser
+   * novo.
+   */
+  avisosLidos: Record<string, number>;
 }

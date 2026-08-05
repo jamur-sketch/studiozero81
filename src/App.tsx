@@ -12,6 +12,7 @@ import EscolaTurma from "@/features/escola/pages/Turma.tsx";
 import EscolaChamadaLista from "@/features/escola/pages/ChamadaLista.tsx";
 import EscolaChamadaDia from "@/features/escola/pages/ChamadaDia.tsx";
 import EscolaAlunos from "@/features/escola/pages/Alunos.tsx";
+import EscolaVisaoGeral from "@/features/escola/pages/VisaoGeralTurma.tsx";
 import EscolaAluno from "@/features/escola/pages/Aluno.tsx";
 import EscolaGestao from "@/features/escola/pages/Gestao.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -100,6 +101,14 @@ const App = () => (
                     element={
                       <ProfessoraRoute>
                         <EscolaChamadaLista />
+                      </ProfessoraRoute>
+                    }
+                  />
+                  <Route
+                    path="turma/:turmaId/visao-geral"
+                    element={
+                      <ProfessoraRoute>
+                        <EscolaVisaoGeral />
                       </ProfessoraRoute>
                     }
                   />

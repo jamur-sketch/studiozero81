@@ -14,7 +14,13 @@ export function chaveChamada(turmaId: string, data: string): string {
   return `${turmaId}|${data}`;
 }
 
-/** Turnos que a turma usa na chamada: integral marca manhã e tarde. */
+/**
+ * A chamada sempre tem os dois turnos, em qualquer turma — a criança pode ficar
+ * só um turno ou o dia todo, e quem registra isso é a professora.
+ */
+export const TURNOS_CHAMADA: Turno[] = ["manha", "tarde"];
+
+/** Turno em que a turma funciona, para exibição (não é a grade da chamada). */
 export function turnosDaTurma(turno: TurnoTurma): Turno[] {
   return turno === "integral" ? ["manha", "tarde"] : [turno];
 }
@@ -97,36 +103,138 @@ export function pendenciasDaProfessora(
 }
 
 /** Frequência do aluno (%) sobre os turnos já lançados. */
-export function frequenciaAluno(estado: EstadoEscola, aluno: Aluno): number | null {
-  const turnos = turnosDaTurma(aluno.turno);
-  let previstos = 0;
-  let presencas = 0;
-  for (const chamada of Object.values(estado.chamadas)) {
-    if (chamada.turmaId !== aluno.turmaId || !chamada.lancadaEm) continue;
-    const registro = chamada.registros[aluno.id];
-    if (!registro) continue;
-    for (const turno of turnos) {
-      previstos += 1;
-      if (registro[turno]) presencas += 1;
-    }
-  }
-  if (previstos === 0) return null;
-  return Math.round((presencas / previstos) * 1000) / 10;
+export interface Frequencia {
+  /** Dias letivos com chamada já lançada. */
+  diasLancados: number;
+  /** Dias em que a criança veio (presente em pelo menos um turno). */
+  diasPresentes: number;
+  /** Dias em que faltou aos dois turnos. */
+  faltas: number;
+  /** Dias presentes sobre dias lançados. `null` enquanto não há chamada. */
+  percentual: number | null;
+  /** Dia da falta mais recente, se houver. */
+  ultimaFalta: string | null;
 }
 
-export function faltasAluno(estado: EstadoEscola, aluno: Aluno): number {
-  const turnos = turnosDaTurma(aluno.turno);
+/**
+ * Frequência da criança em dias: quantos dias ela veio à escola sobre os dias
+ * já lançados. Meio período conta como dia presente; falta é o dia inteiro.
+ */
+export function frequenciaAluno(estado: EstadoEscola, aluno: Aluno): Frequencia {
+  let diasLancados = 0;
+  let diasPresentes = 0;
   let faltas = 0;
+  let ultimaFalta: string | null = null;
+
   for (const chamada of Object.values(estado.chamadas)) {
     if (chamada.turmaId !== aluno.turmaId || !chamada.lancadaEm) continue;
     const registro = chamada.registros[aluno.id];
     if (!registro) continue;
-    // Turma integral: manhã e tarde ausentes contam como uma falta no dia.
-    const ausencias = turnos.filter((t) => !registro[t]).length;
-    if (ausencias === turnos.length) faltas += 1;
-    else if (ausencias > 0) faltas += 0.5;
+    diasLancados += 1;
+    const veio = TURNOS_CHAMADA.some((turno) => registro[turno]);
+    if (veio) {
+      diasPresentes += 1;
+    } else {
+      faltas += 1;
+      if (!ultimaFalta || chamada.data > ultimaFalta) ultimaFalta = chamada.data;
+    }
   }
-  return faltas;
+
+  return {
+    diasLancados,
+    diasPresentes,
+    faltas,
+    percentual:
+      diasLancados === 0 ? null : Math.round((diasPresentes / diasLancados) * 1000) / 10,
+    ultimaFalta,
+  };
+}
+
+export interface LinhaFrequencia extends Frequencia {
+  aluno: Aluno;
+}
+
+export interface ResumoTurma {
+  linhas: LinhaFrequencia[];
+  diasLancados: number;
+  /** Média das frequências das crianças, em %. */
+  frequenciaMedia: number | null;
+  /** Crianças que já bateram o limite de faltas. */
+  emAlerta: LinhaFrequencia[];
+}
+
+/** Visão geral da turma: como cada criança está de presença no período. */
+export function resumoTurma(
+  estado: EstadoEscola,
+  turmaId: string,
+  limiteFaltas = LIMITE_FALTAS_AVISO,
+): ResumoTurma {
+  const linhas = alunosDaTurma(estado, turmaId).map((aluno) => ({
+    aluno,
+    ...frequenciaAluno(estado, aluno),
+  }));
+  const comDados = linhas.filter((linha) => linha.percentual !== null);
+  return {
+    linhas,
+    diasLancados: linhas.reduce((maior, linha) => Math.max(maior, linha.diasLancados), 0),
+    frequenciaMedia:
+      comDados.length === 0
+        ? null
+        : Math.round(
+            (comDados.reduce((soma, linha) => soma + (linha.percentual ?? 0), 0) /
+              comDados.length) *
+              10,
+          ) / 10,
+    emAlerta: linhas.filter((linha) => linha.faltas >= limiteFaltas),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Aviso de faltas para a direção
+// ---------------------------------------------------------------------------
+
+/** A partir daqui a direção é avisada. */
+export const LIMITE_FALTAS_AVISO = 5;
+
+export interface AvisoFaltas {
+  alunoId: string;
+  alunoNome: string;
+  turmaId: string;
+  turmaNome: string;
+  faltas: number;
+  diasLancados: number;
+  percentual: number | null;
+  ultimaFalta: string | null;
+  /** Falso depois que a direção marca como visto, até a criança faltar de novo. */
+  novo: boolean;
+}
+
+/**
+ * Crianças que atingiram o limite de faltas. Marcar como visto silencia o
+ * aviso até a próxima falta — o caso não some da lista, só deixa de ser novo.
+ */
+export function avisosDeFaltas(
+  estado: EstadoEscola,
+  limite = LIMITE_FALTAS_AVISO,
+): AvisoFaltas[] {
+  const avisos: AvisoFaltas[] = [];
+  for (const aluno of estado.alunos) {
+    const frequencia = frequenciaAluno(estado, aluno);
+    if (frequencia.faltas < limite) continue;
+    const turma = estado.turmas.find((t) => t.id === aluno.turmaId);
+    avisos.push({
+      alunoId: aluno.id,
+      alunoNome: aluno.nome,
+      turmaId: aluno.turmaId,
+      turmaNome: turma?.nome ?? "—",
+      faltas: frequencia.faltas,
+      diasLancados: frequencia.diasLancados,
+      percentual: frequencia.percentual,
+      ultimaFalta: frequencia.ultimaFalta,
+      novo: (estado.avisosLidos[aluno.id] ?? 0) < frequencia.faltas,
+    });
+  }
+  return avisos.sort((a, b) => b.faltas - a.faltas || a.alunoNome.localeCompare(b.alunoNome, "pt-BR"));
 }
 
 // ---------------------------------------------------------------------------

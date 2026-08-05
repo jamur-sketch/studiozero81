@@ -1,8 +1,8 @@
 import type { Aluno, Chamada, EstadoEscola, Professora, Turma } from "../types";
-import { chaveChamada, turnosDaTurma } from "../lib/chamada";
+import { chaveChamada } from "../lib/chamada";
 import { diasLetivos, hojeIso, paraIso } from "../lib/datas";
 
-export const VERSAO_ESTADO = 2;
+export const VERSAO_ESTADO = 3;
 
 const ANO_LETIVO = 2026;
 
@@ -299,6 +299,9 @@ function gerarAlunos(turma: Turma, quantidade: number): Aluno[] {
  * Chamadas de demonstração: tudo que já passou aparece lançado, menos os dois
  * últimos dias letivos anteriores a hoje — assim a professora sempre encontra
  * pendência ao entrar, que é o comportamento que o sistema precisa mostrar.
+ *
+ * Uma criança por turma é infrequente de propósito, para a direção ter o que
+ * ver no aviso de faltas.
  */
 function gerarChamadas(
   turmas: Turma[],
@@ -312,19 +315,20 @@ function gerarChamadas(
 
   for (const turma of turmas) {
     const daTurma = alunos.filter((a) => a.turmaId === turma.id);
-    const turnos = turnosDaTurma(turma.turno);
     const rnd = semente(`chamada-${turma.id}`);
+    const infrequente = daTurma[Math.floor(rnd() * daTurma.length)]?.id;
 
     for (const data of datas) {
       if (data >= hoje || naoLancados.has(data)) continue;
       const registros: Record<string, { manha: boolean; tarde: boolean; observacao?: string }> = {};
       for (const aluno of daTurma) {
-        const faltou = rnd() < 0.08;
-        const meioPeriodo = !faltou && turnos.length > 1 && rnd() < 0.05;
+        const chanceFalta = aluno.id === infrequente ? 0.35 : 0.06;
+        const faltou = rnd() < chanceFalta;
+        const meioPeriodo = !faltou && rnd() < 0.05;
         registros[aluno.id] = {
           manha: !faltou,
           tarde: !faltou && !meioPeriodo,
-          observacao: faltou && rnd() < 0.4 ? "Família avisou: consulta médica." : undefined,
+          observacao: faltou && rnd() < 0.35 ? "Família avisou: consulta médica." : undefined,
         };
       }
       chamadas[chaveChamada(turma.id, data)] = {
@@ -361,9 +365,13 @@ export function criarEstadoInicial(hoje = hojeIso()): EstadoEscola {
   );
 
   const feriadosIso = feriados.map((f) => f.data);
-  // Só o período em curso recebe chamadas de demonstração.
-  const periodoAtual = periodos.find((p) => p.inicio <= hoje && hoje <= p.fim) ?? periodos[1];
-  const datas = diasLetivos(periodoAtual.inicio, periodoAtual.fim, feriadosIso, hoje);
+  // A escola começou a usar o sistema em junho: há histórico suficiente para a
+  // frequência significar alguma coisa, sem cobrar o ano letivo inteiro.
+  const usoDesde = `${ANO_LETIVO}-06-01`;
+  const datas = periodos.flatMap((periodo) => {
+    const inicio = periodo.inicio > usoDesde ? periodo.inicio : usoDesde;
+    return inicio > periodo.fim ? [] : diasLetivos(inicio, periodo.fim, feriadosIso, hoje);
+  });
 
   return {
     versao: VERSAO_ESTADO,
@@ -372,7 +380,7 @@ export function criarEstadoInicial(hoje = hojeIso()): EstadoEscola {
       nome: "E.M.E.I. JARDIM ENCANTADO",
       municipio: "Santo Antônio da Patrulha",
       anoLetivo: ANO_LETIVO,
-      usoDesde: periodoAtual.inicio,
+      usoDesde,
     },
     periodos,
     feriados,
@@ -380,5 +388,6 @@ export function criarEstadoInicial(hoje = hojeIso()): EstadoEscola {
     turmas: TURMAS,
     alunos,
     chamadas: gerarChamadas(TURMAS, alunos, datas, hoje),
+    avisosLidos: {},
   };
 }

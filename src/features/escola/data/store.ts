@@ -89,6 +89,14 @@ export function lancarChamada(
   });
 }
 
+/** A direção marca o aviso de faltas como visto, no número atual de faltas. */
+export function marcarAvisoVisto(alunoId: string, faltas: number) {
+  definirEstado({
+    ...estado,
+    avisosLidos: { ...estado.avisosLidos, [alunoId]: faltas },
+  });
+}
+
 /** Reabre uma chamada já lançada para correção. */
 export function reabrirChamada(turmaId: string, data: string) {
   const atual = estado.chamadas[chaveChamada(turmaId, data)];

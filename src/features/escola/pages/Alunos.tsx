@@ -15,7 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import EscolaLayout from "../components/EscolaLayout";
 import { useEstadoEscola } from "../data/store";
-import { alunosDaTurma, faltasAluno, frequenciaAluno } from "../lib/chamada";
+import { LIMITE_FALTAS_AVISO, alunosDaTurma, frequenciaAluno } from "../lib/chamada";
 import { formatarBr, idadeExtenso } from "../lib/datas";
 
 export default function Alunos() {
@@ -76,13 +76,14 @@ export default function Alunos() {
                   <TableHead className="min-w-[200px]">Mãe</TableHead>
                   <TableHead className="min-w-[200px]">Pai</TableHead>
                   <TableHead className="text-center">Faltas</TableHead>
-                  <TableHead className="text-center">Freq.</TableHead>
+                  <TableHead className="text-center">Dias presentes</TableHead>
                   <TableHead>Atenção</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtrados.map((aluno) => {
                   const frequencia = frequenciaAluno(estado, aluno);
+                  const emAlerta = frequencia.faltas >= LIMITE_FALTAS_AVISO;
                   const alertas = [
                     ...aluno.saude.alergias.map((a) => `Alergia: ${a}`),
                     ...aluno.saude.restricoesAlimentares.map((r) => r),
@@ -117,16 +118,37 @@ export default function Alunos() {
                           {aluno.pai.telefone}
                         </span>
                       </TableCell>
-                      <TableCell className="text-center text-sm">
-                        {faltasAluno(estado, aluno)}
-                      </TableCell>
                       <TableCell
                         className={cn(
-                          "text-center text-sm font-medium",
-                          frequencia !== null && frequencia < 75 && "text-red-600 dark:text-red-400",
+                          "text-center text-sm tabular-nums",
+                          emAlerta && "font-semibold text-red-600 dark:text-red-400",
                         )}
                       >
-                        {frequencia === null ? "—" : `${frequencia.toFixed(0)}%`}
+                        {frequencia.faltas}
+                      </TableCell>
+                      <TableCell className="text-center text-sm tabular-nums">
+                        {frequencia.diasLancados === 0 ? (
+                          "—"
+                        ) : (
+                          <>
+                            <span className="font-medium">
+                              {frequencia.diasPresentes}
+                              <span className="text-muted-foreground font-normal">
+                                /{frequencia.diasLancados}
+                              </span>
+                            </span>
+                            <span
+                              className={cn(
+                                "block text-[11px]",
+                                (frequencia.percentual ?? 100) < 75
+                                  ? "text-red-600 dark:text-red-400"
+                                  : "text-muted-foreground",
+                              )}
+                            >
+                              {frequencia.percentual?.toFixed(0)}%
+                            </span>
+                          </>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">

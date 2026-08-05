@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  LIMITE_FALTAS_AVISO,
+  TURNOS_CHAMADA,
   alternarColunaTurno,
   alternarTodosDoAluno,
   alternarTudo,
   alternarTurno,
+  avisosDeFaltas,
   estaTudoMarcado,
   frequenciaAluno,
   pendenciasDaProfessora,
   resumoChamada,
+  resumoTurma,
   statusChamada,
   turnosDaTurma,
 } from "./chamada";
@@ -73,6 +77,10 @@ describe("alternância de presença", () => {
 });
 
 describe("turnos da turma", () => {
+  it("a grade da chamada tem sempre manhã e tarde, em qualquer turma", () => {
+    expect(TURNOS_CHAMADA).toEqual(["manha", "tarde"]);
+  });
+
   it("turma integral usa manhã e tarde", () => {
     expect(turnosDaTurma("integral")).toEqual(["manha", "tarde"]);
   });
@@ -144,9 +152,9 @@ describe("pendências da professora", () => {
 
   it("não cobra dias anteriores ao início de uso do sistema", () => {
     const pendencias = pendenciasDaProfessora(estado, "prof-sabrina", hoje);
-    expect(estado.escola.usoDesde).toBe("2026-07-27");
+    expect(estado.escola.usoDesde).toBe("2026-06-01");
     expect(pendencias.every((p) => p.data >= estado.escola.usoDesde)).toBe(true);
-    // 1º semestre inteiro fora do sistema não vira pendência
+    // o que a escola registrou fora do sistema não vira pendência
     expect(pendencias.length).toBeLessThan(5);
   });
 
@@ -176,21 +184,104 @@ describe("pendências da professora", () => {
   });
 });
 
-describe("frequência", () => {
+describe("frequência em dias", () => {
+  const hoje = "2026-08-04";
+  const estado = criarEstadoInicial(hoje);
+  const aluno = estado.alunos[0];
+
+  it("conta os dias em que a criança veio sobre os dias lançados", () => {
+    const frequencia = frequenciaAluno(estado, aluno);
+    expect(frequencia.diasLancados).toBeGreaterThan(0);
+    expect(frequencia.diasPresentes + frequencia.faltas).toBe(frequencia.diasLancados);
+    expect(frequencia.percentual).toBeGreaterThanOrEqual(0);
+    expect(frequencia.percentual).toBeLessThanOrEqual(100);
+  });
+
+  it("meio período conta como dia presente; falta é o dia inteiro", () => {
+    const chamadas = {
+      "t1|2026-08-03": {
+        turmaId: "t1",
+        data: "2026-08-03",
+        lancadaEm: "2026-08-03T18:00",
+        lancadaPor: null,
+        registros: { a1: { manha: true, tarde: false } },
+      },
+      "t1|2026-08-04": {
+        turmaId: "t1",
+        data: "2026-08-04",
+        lancadaEm: "2026-08-04T18:00",
+        lancadaPor: null,
+        registros: { a1: { manha: false, tarde: false } },
+      },
+    };
+    const base = {
+      ...estado,
+      chamadas,
+      alunos: [{ ...aluno, id: "a1", turmaId: "t1" }],
+    };
+    const frequencia = frequenciaAluno(base, base.alunos[0]);
+    expect(frequencia.diasLancados).toBe(2);
+    expect(frequencia.diasPresentes).toBe(1);
+    expect(frequencia.faltas).toBe(1);
+    expect(frequencia.ultimaFalta).toBe("2026-08-04");
+    expect(frequencia.percentual).toBe(50);
+  });
+
+  it("chamada em aberto não entra na conta", () => {
+    const semChamadas = { ...estado, chamadas: {} };
+    const frequencia = frequenciaAluno(semChamadas, semChamadas.alunos[0]);
+    expect(frequencia.diasLancados).toBe(0);
+    expect(frequencia.percentual).toBeNull();
+  });
+});
+
+describe("aviso de faltas para a direção", () => {
   const hoje = "2026-08-04";
   const estado = criarEstadoInicial(hoje);
 
-  it("calcula sobre os turnos já lançados e ignora chamadas em aberto", () => {
-    const aluno = estado.alunos.find((a) => a.turmaId === "turma-maternal-1a")!;
-    const frequencia = frequenciaAluno(estado, aluno);
-    expect(frequencia).not.toBeNull();
-    expect(frequencia!).toBeGreaterThanOrEqual(0);
-    expect(frequencia!).toBeLessThanOrEqual(100);
+  it("a carga de demonstração tem criança infrequente para a direção ver", () => {
+    const avisos = avisosDeFaltas(estado);
+    expect(avisos.length).toBeGreaterThan(0);
+    expect(avisos.every((aviso) => aviso.faltas >= LIMITE_FALTAS_AVISO)).toBe(true);
+    expect(avisos.every((aviso) => aviso.novo)).toBe(true);
   });
 
-  it("aluno sem nenhuma chamada lançada não tem frequência", () => {
-    const semChamadas = { ...estado, chamadas: {} };
-    const aluno = semChamadas.alunos[0];
-    expect(frequenciaAluno(semChamadas, aluno)).toBeNull();
+  it("vem ordenado da criança com mais faltas para a com menos", () => {
+    const avisos = avisosDeFaltas(estado);
+    const faltas = avisos.map((a) => a.faltas);
+    expect([...faltas].sort((a, b) => b - a)).toEqual(faltas);
+  });
+
+  it("não avisa quem está abaixo do limite", () => {
+    const avisos = avisosDeFaltas(estado);
+    const avisados = new Set(avisos.map((a) => a.alunoId));
+    for (const aluno of estado.alunos) {
+      if (avisados.has(aluno.id)) continue;
+      expect(frequenciaAluno(estado, aluno).faltas).toBeLessThan(LIMITE_FALTAS_AVISO);
+    }
+  });
+
+  it("marcar como visto silencia o aviso até a próxima falta", () => {
+    const [primeiro] = avisosDeFaltas(estado);
+    const visto = { ...estado, avisosLidos: { [primeiro.alunoId]: primeiro.faltas } };
+    expect(avisosDeFaltas(visto).find((a) => a.alunoId === primeiro.alunoId)?.novo).toBe(false);
+
+    const desatualizado = { ...estado, avisosLidos: { [primeiro.alunoId]: primeiro.faltas - 1 } };
+    expect(avisosDeFaltas(desatualizado).find((a) => a.alunoId === primeiro.alunoId)?.novo).toBe(
+      true,
+    );
+  });
+});
+
+describe("visão geral da turma", () => {
+  const estado = criarEstadoInicial("2026-08-04");
+
+  it("resume a turma inteira e separa quem está no limite de faltas", () => {
+    const resumo = resumoTurma(estado, "turma-maternal-1a");
+    expect(resumo.linhas.length).toBe(
+      estado.alunos.filter((a) => a.turmaId === "turma-maternal-1a").length,
+    );
+    expect(resumo.frequenciaMedia).not.toBeNull();
+    expect(resumo.emAlerta.every((linha) => linha.faltas >= LIMITE_FALTAS_AVISO)).toBe(true);
   });
 });

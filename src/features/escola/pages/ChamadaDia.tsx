@@ -27,7 +27,9 @@ import EscolaLayout from "../components/EscolaLayout";
 import { lancarChamada, reabrirChamada, useEstadoEscola } from "../data/store";
 import { useProfessora } from "../hooks/useProfessora";
 import {
+  LIMITE_FALTAS_AVISO,
   ROTULO_TURNO,
+  TURNOS_CHAMADA,
   alternarColunaTurno,
   alternarTodosDoAluno,
   alternarTudo,
@@ -91,7 +93,7 @@ export default function ChamadaDia() {
     [estado, turma],
   );
   const alunoIds = useMemo(() => alunos.map((a) => a.id), [alunos]);
-  const turnos = useMemo(() => (turma ? turnosDaTurma(turma.turno) : []), [turma]);
+  const turnos = TURNOS_CHAMADA;
   const chamadaSalva = estado.chamadas[chaveChamada(turmaId, data)];
 
   const [registros, setRegistros] = useState<Record<string, RegistroPresenca>>({});
@@ -208,8 +210,12 @@ export default function ChamadaDia() {
               <strong className="text-red-700 dark:text-red-400">{resumo.ausentes}</strong>
             </span>
             <span>
-              <span className="text-muted-foreground">Turnos: </span>
-              <strong>{turnos.map((t) => ROTULO_TURNO[t]).join(" e ")}</strong>
+              <span className="text-muted-foreground">Turma de: </span>
+              <strong>
+                {turma.turno === "integral"
+                  ? "Manhã e tarde"
+                  : turnosDaTurma(turma.turno).map((t) => ROTULO_TURNO[t]).join(" e ")}
+              </strong>
             </span>
             {chamadaSalva?.lancadaEm && (
               <span className="text-xs text-muted-foreground">
@@ -256,7 +262,7 @@ export default function ChamadaDia() {
                 <TableRow>
                   <TableHead className="w-20 hidden sm:table-cell">Código</TableHead>
                   <TableHead className="min-w-[140px] sm:min-w-[220px]">Estudante</TableHead>
-                  <TableHead className="w-20 text-center hidden md:table-cell">Freq.</TableHead>
+                  <TableHead className="w-24 text-center hidden md:table-cell">Frequência</TableHead>
                   {turnos.map((turno) => (
                     <TableHead key={turno} className="w-[76px] sm:w-24 text-center px-1 sm:px-4">
                       {ROTULO_TURNO[turno]}
@@ -305,24 +311,40 @@ export default function ChamadaDia() {
                         >
                           {aluno.nome}
                         </Link>
+                        {/* Em tela estreita a frequência vem embaixo do nome,
+                            para os botões de presença caberem sem rolar. */}
+                        <span className="block md:hidden text-xs text-muted-foreground">
+                          {frequencia.diasLancados === 0
+                            ? "sem dias lançados"
+                            : `veio ${frequencia.diasPresentes} de ${frequencia.diasLancados} dias`}
+                        </span>
                         {registro.observacao && (
                           <span className="block text-xs text-muted-foreground truncate max-w-[260px]">
                             {registro.observacao}
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-center text-xs hidden md:table-cell">
-                        {frequencia === null ? (
-                          <span className="text-muted-foreground">—</span>
+                      <TableCell className="text-center hidden md:table-cell">
+                        {frequencia.diasLancados === 0 ? (
+                          <span className="text-xs text-muted-foreground">—</span>
                         ) : (
-                          <span
-                            className={cn(
-                              "font-medium",
-                              frequencia < 75 ? "text-red-600 dark:text-red-400" : "text-muted-foreground",
-                            )}
-                          >
-                            {frequencia.toFixed(0)}%
-                          </span>
+                          <>
+                            <span
+                              className={cn(
+                                "block text-sm font-semibold tabular-nums",
+                                frequencia.faltas >= LIMITE_FALTAS_AVISO &&
+                                  "text-red-600 dark:text-red-400",
+                              )}
+                            >
+                              {frequencia.diasPresentes}
+                              <span className="text-muted-foreground font-normal">
+                                /{frequencia.diasLancados}
+                              </span>
+                            </span>
+                            <span className="block text-[11px] text-muted-foreground tabular-nums">
+                              {frequencia.percentual?.toFixed(0)}%
+                            </span>
+                          </>
                         )}
                       </TableCell>
                       {turnos.map((turno) => (

@@ -122,9 +122,17 @@ export default function Painel() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
+                          {/* Com a chamada do dia feita, o próximo passo útil é
+                              olhar a turma, não reabrir o mesmo dia. */}
                           <Button size="sm" variant="outline" asChild>
-                            <Link to={`/escola/turma/${turma.id}/chamada/${hoje}`}>
-                              {status === "lancada" ? "Revisar" : "Fazer chamada"}
+                            <Link
+                              to={
+                                status === "lancada"
+                                  ? `/escola/turma/${turma.id}/visao-geral`
+                                  : `/escola/turma/${turma.id}/chamada/${hoje}`
+                              }
+                            >
+                              {status === "lancada" ? "Visão geral da turma" : "Fazer chamada"}
                               <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                             </Link>
                           </Button>
