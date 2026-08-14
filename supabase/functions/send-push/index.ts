@@ -3,10 +3,37 @@
 import webpush from "npm:web-push@3.6.7";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-// Prefere a chave nova (sb_secret_...). A antiga só serve em projetos
-// que ainda não desativaram as chaves legadas.
+
+// O Supabase expõe SUPABASE_SECRET_KEYS como um dicionário JSON.
+// Extrai dali a primeira chave sb_secret_ que encontrar.
+function chaveDoDicionario(): string | undefined {
+  const bruto = Deno.env.get("SUPABASE_SECRET_KEYS");
+  if (!bruto) return undefined;
+  try {
+    const dados = JSON.parse(bruto);
+    const candidatos: unknown[] = Array.isArray(dados) ? dados : Object.values(dados);
+    for (const item of candidatos) {
+      if (typeof item === "string" && item.startsWith("sb_secret_")) return item;
+      // Formato alternativo: [{ name, api_key }]
+      if (item && typeof item === "object") {
+        for (const v of Object.values(item as Record<string, unknown>)) {
+          if (typeof v === "string" && v.startsWith("sb_secret_")) return v;
+        }
+      }
+    }
+  } catch {
+    // Se não for JSON válido, pode ser a chave em texto puro.
+    if (bruto.startsWith("sb_secret_")) return bruto;
+  }
+  return undefined;
+}
+
+// Ordem: chave definida à mão → dicionário automático → chave legada (obsoleta).
 const SERVICE_ROLE_KEY =
-  Deno.env.get("SUPABASE_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  Deno.env.get("SUPABASE_SECRET_KEY") ??
+  chaveDoDicionario() ??
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
+  "";
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY")!;
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY")!;
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") || "mailto:estudioo081@gmail.com";
