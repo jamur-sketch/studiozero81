@@ -1,7 +1,6 @@
 // Envia notificação push para os aparelhos do admin.
 // Chamada por um Database Webhook do Supabase a cada INSERT em `notifications`.
 import webpush from "npm:web-push@3.6.7";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -15,6 +14,39 @@ interface NotificationRow {
   id: string;
   title: string;
   body: string | null;
+}
+
+interface PushSubscriptionRow {
+  id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}
+
+// Acesso direto à API do banco: evita carregar o cliente inteiro,
+// deixando o arranque da função mais rápido (o push chega antes).
+const dbHeaders = {
+  apikey: SERVICE_ROLE_KEY,
+  Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+  "Content-Type": "application/json",
+};
+
+async function listarInscricoes(): Promise<PushSubscriptionRow[]> {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/push_subscriptions?select=id,endpoint,p256dh,auth`,
+    { headers: dbHeaders },
+  );
+  if (!res.ok) throw new Error(`Falha ao ler inscrições: ${res.status} ${await res.text()}`);
+  return await res.json();
+}
+
+async function removerInscricoes(ids: string[]): Promise<void> {
+  const lista = ids.map((id) => `"${id}"`).join(",");
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/push_subscriptions?id=in.(${lista})`,
+    { method: "DELETE", headers: dbHeaders },
+  );
+  if (!res.ok) console.error("Falha ao limpar inscrições:", res.status, await res.text());
 }
 
 Deno.serve(async (req) => {
@@ -31,13 +63,7 @@ Deno.serve(async (req) => {
       return json({ error: "Payload sem notificação." }, 400);
     }
 
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-
-    const { data: subs, error } = await admin
-      .from("push_subscriptions")
-      .select("id, endpoint, p256dh, auth");
-
-    if (error) throw new Error(error.message);
+    const subs = await listarInscricoes();
     if (!subs || subs.length === 0) {
       return json({ sent: 0, note: "Nenhum aparelho inscrito." });
     }
@@ -53,7 +79,7 @@ Deno.serve(async (req) => {
     const expirados: string[] = [];
 
     await Promise.all(
-      subs.map(async (s: any) => {
+      subs.map(async (s) => {
         try {
           await webpush.sendNotification(
             { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
@@ -72,7 +98,7 @@ Deno.serve(async (req) => {
     );
 
     if (expirados.length > 0) {
-      await admin.from("push_subscriptions").delete().in("id", expirados);
+      await removerInscricoes(expirados);
     }
 
     return json({ sent, removed: expirados.length });
