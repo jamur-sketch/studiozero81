@@ -18,6 +18,13 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
+      // Service worker próprio (src/sw.ts) para tratar notificações push.
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
+      injectManifest: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+      },
       includeAssets: ["favicon.ico", "favicon.png", "apple-touch-icon.png"],
       manifest: {
         name: "ZERO81 Studio",
@@ -38,22 +45,6 @@ export default defineConfig(({ mode }) => ({
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
-          },
-        ],
-      },
-      workbox: {
-        // O app é dinâmico: nunca servir HTML velho de cache.
-        navigateFallbackDenylist: [/^\/api/],
-        runtimeCaching: [
-          {
-            // Chamadas ao Supabase sempre vão à rede; cache só como reserva offline.
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "supabase",
-              networkTimeoutSeconds: 10,
-              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 },
-            },
           },
         ],
       },
