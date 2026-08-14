@@ -97,7 +97,12 @@ function PushToggle() {
   );
 }
 
-export function NotificationBell() {
+export function NotificationBell({
+  variant = "sidebar",
+}: {
+  /** "sidebar" = fundo escuro do menu lateral; "header" = fundo claro das páginas. */
+  variant?: "sidebar" | "header";
+}) {
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
@@ -112,13 +117,17 @@ export function NotificationBell() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          className="relative p-2 rounded-lg text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-white/5 transition-colors shrink-0"
+          className={`relative rounded-lg transition-colors shrink-0 ${
+            variant === "sidebar"
+              ? "p-2 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-white/5"
+              : "h-10 w-10 flex items-center justify-center border border-border bg-background text-foreground hover:bg-accent rounded-xl"
+          }`}
           title="Notificações"
           aria-label={
             unreadCount > 0 ? `Notificações (${unreadCount} não lidas)` : "Notificações"
           }
         >
-          <Bell className="h-[18px] w-[18px]" />
+          <Bell className={variant === "sidebar" ? "h-[18px] w-[18px]" : "h-5 w-5"} />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
               {unreadCount > 9 ? "9+" : unreadCount}

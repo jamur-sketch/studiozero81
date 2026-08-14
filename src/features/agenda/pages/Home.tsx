@@ -5,6 +5,7 @@ import { EventEditDialog } from "@/features/agenda/components/EventEditDialog";
 import { BlockDialog } from "@/features/agenda/components/BlockDialog";
 import InteractiveCalendar from "@/features/agenda/components/InteractiveCalendar";
 import AppLayout from "@/components/AppLayout";
+import { NotificationBell } from "@/features/notificacoes/components/NotificationBell";
 import { Button } from "@/components/ui/button";
 
 export default function HomePage() {
@@ -23,10 +24,17 @@ export default function HomePage() {
     recurrenceGroup?: string | null;
   } | null>(null);
 
-  const today = new Date().toLocaleDateString("pt-BR", {
+  const hoje = new Date();
+  const today = hoje.toLocaleDateString("pt-BR", {
     weekday: "long",
     year: "numeric",
     month: "long",
+    day: "numeric",
+  });
+  // Versão curta para o celular, onde a data longa quebrava em três linhas.
+  const todayShort = hoje.toLocaleDateString("pt-BR", {
+    weekday: "short",
+    month: "short",
     day: "numeric",
   });
 
@@ -58,19 +66,27 @@ export default function HomePage() {
   return (
     <AppLayout>
       <div className="flex-1 flex flex-col bg-gradient-to-br from-secondary via-background to-secondary/50">
-        <header className="bg-card/80 backdrop-blur-sm border-b border-border/50 px-6 md:px-10 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-4 pl-12 md:pl-0">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
+        <header className="bg-card/80 backdrop-blur-sm border-b border-border/50 px-4 md:px-10 py-4 md:py-5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3 md:gap-4 pl-12 md:pl-0 min-w-0">
+            {/* Ícone só no desktop: no celular o espaço é do título. */}
+            <div className="hidden md:flex w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary/80 items-center justify-center shadow-lg shadow-primary/20">
               <CalendarDays className="h-5 w-5 text-primary-foreground" />
             </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">
+            <div className="min-w-0">
+              <h1 className="text-xl md:text-3xl font-bold text-foreground tracking-tight leading-tight">
                 Agenda
               </h1>
-              <p className="text-sm text-muted-foreground capitalize">{today}</p>
+              <p className="text-xs md:text-sm text-muted-foreground capitalize truncate">
+                <span className="md:hidden">{todayShort}</span>
+                <span className="hidden md:inline">{today}</span>
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
+            {/* No desktop o sino fica no menu lateral; no celular, aqui. */}
+            <div className="md:hidden">
+              <NotificationBell variant="header" />
+            </div>
             <Button
               onClick={() => {
                 setSelectedDate(undefined);
