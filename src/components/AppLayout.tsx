@@ -139,7 +139,10 @@ function MobileMenuButton() {
   return (
     <button
       onClick={toggleSidebar}
-      className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg"
+      // Posição fixa não herda o padding do body, então a margem de segurança
+      // do topo (relógio/bateria do iPhone) entra aqui manualmente.
+      style={{ top: "calc(0.75rem + env(safe-area-inset-top))" }}
+      className="md:hidden fixed left-4 z-50 w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg"
       aria-label={
         unreadCount > 0 ? `Menu (${unreadCount} notificações não lidas)` : "Menu"
       }
