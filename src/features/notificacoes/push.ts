@@ -33,7 +33,18 @@ export async function getPushStatus(): Promise<PushStatus> {
 
   const reg = await navigator.serviceWorker.getRegistration();
   const sub = await reg?.pushManager.getSubscription();
-  return sub ? "on" : "off";
+  if (!sub) return "off";
+
+  // Só está realmente ligado se o servidor também conhecer este aparelho.
+  // Sem esta checagem o botão diz "ativado" enquanto nenhum aviso chega.
+  const { data, error } = await (supabase as any)
+    .from("push_subscriptions")
+    .select("id")
+    .eq("endpoint", sub.endpoint)
+    .maybeSingle();
+
+  if (error || !data) return "off";
+  return "on";
 }
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {
