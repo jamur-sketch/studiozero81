@@ -54,7 +54,12 @@ function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
-      <SidebarHeader className="px-5 py-5 border-b border-sidebar-border/50">
+      {/* O menu é uma camada flutuante: não herda o padding do body, então a
+          margem do topo (Dynamic Island / relógio) entra aqui manualmente. */}
+      <SidebarHeader
+        style={{ paddingTop: "calc(1.25rem + env(safe-area-inset-top))" }}
+        className="px-5 pb-5 border-b border-sidebar-border/50"
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 group-data-[collapsible=icon]:hidden">
             <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
@@ -103,7 +108,10 @@ function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4">
+      <SidebarFooter
+        style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+        className="px-4 pt-4"
+      >
         <Separator className="mb-4 bg-sidebar-border/30" />
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
