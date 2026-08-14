@@ -29,8 +29,9 @@ function chaveDoDicionario(): string | undefined {
 }
 
 // Ordem: chave definida à mão → dicionário automático → chave legada (obsoleta).
+// O nome não pode começar com SUPABASE_ (prefixo reservado pela plataforma).
 const SERVICE_ROLE_KEY =
-  Deno.env.get("SUPABASE_SECRET_KEY") ??
+  Deno.env.get("PUSH_DB_KEY") ??
   chaveDoDicionario() ??
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
   "";
@@ -64,7 +65,7 @@ const dbHeaders = {
 async function listarInscricoes(): Promise<PushSubscriptionRow[]> {
   if (!SERVICE_ROLE_KEY) {
     throw new Error(
-      "Nenhuma chave de acesso ao banco configurada. Defina o secret SUPABASE_SECRET_KEY.",
+      "Nenhuma chave de acesso ao banco configurada. Defina o secret PUSH_DB_KEY.",
     );
   }
   const res = await fetch(
