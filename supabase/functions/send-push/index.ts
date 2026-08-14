@@ -3,7 +3,10 @@
 import webpush from "npm:web-push@3.6.7";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+// Prefere a chave nova (sb_secret_...). A antiga só serve em projetos
+// que ainda não desativaram as chaves legadas.
+const SERVICE_ROLE_KEY =
+  Deno.env.get("SUPABASE_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY")!;
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY")!;
 const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") || "mailto:estudioo081@gmail.com";
@@ -32,6 +35,11 @@ const dbHeaders = {
 };
 
 async function listarInscricoes(): Promise<PushSubscriptionRow[]> {
+  if (!SERVICE_ROLE_KEY) {
+    throw new Error(
+      "Nenhuma chave de acesso ao banco configurada. Defina o secret SUPABASE_SECRET_KEY.",
+    );
+  }
   const res = await fetch(
     `${SUPABASE_URL}/rest/v1/push_subscriptions?select=id,endpoint,p256dh,auth`,
     { headers: dbHeaders },
