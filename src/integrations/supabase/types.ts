@@ -40,40 +40,100 @@ export type Database = {
       }
       bookings: {
         Row: {
+          client_id: string | null
           client_name: string
           client_phone: string
           created_at: string
           end_time: string
           google_event_id: string | null
           id: string
+          payment_method: string | null
+          payment_status: string
+          price: number
+          recurrence_group: string | null
+          recurring: boolean
           service: string
           start_time: string
           status: string
           updated_at: string
         }
         Insert: {
+          client_id?: string | null
           client_name: string
           client_phone: string
           created_at?: string
           end_time: string
           google_event_id?: string | null
           id?: string
+          payment_method?: string | null
+          payment_status?: string
+          price?: number
+          recurrence_group?: string | null
+          recurring?: boolean
           service: string
           start_time: string
           status?: string
           updated_at?: string
         }
         Update: {
+          client_id?: string | null
           client_name?: string
           client_phone?: string
           created_at?: string
           end_time?: string
           google_event_id?: string | null
           id?: string
+          payment_method?: string | null
+          payment_status?: string
+          price?: number
+          recurrence_group?: string | null
+          recurring?: boolean
           service?: string
           start_time?: string
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      cash_closures: {
+        Row: {
+          appointments_count: number
+          closed_at: string
+          closure_date: string
+          id: string
+          total_cash: number
+          total_credit: number
+          total_debit: number
+          total_owing: number
+          total_pending: number
+          total_pix: number
+          total_received: number
+        }
+        Insert: {
+          appointments_count?: number
+          closed_at?: string
+          closure_date: string
+          id?: string
+          total_cash?: number
+          total_credit?: number
+          total_debit?: number
+          total_owing?: number
+          total_pending?: number
+          total_pix?: number
+          total_received?: number
+        }
+        Update: {
+          appointments_count?: number
+          closed_at?: string
+          closure_date?: string
+          id?: string
+          total_cash?: number
+          total_credit?: number
+          total_debit?: number
+          total_owing?: number
+          total_pending?: number
+          total_pix?: number
+          total_received?: number
         }
         Relationships: []
       }
@@ -83,29 +143,76 @@ export type Database = {
           email: string | null
           id: string
           last_booking_date: string | null
+          lgpd_consent: boolean
+          lgpd_consent_at: string | null
           name: string
           phone: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           email?: string | null
           id?: string
           last_booking_date?: string | null
+          lgpd_consent?: boolean
+          lgpd_consent_at?: string | null
           name: string
           phone?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           email?: string | null
           id?: string
           last_booking_date?: string | null
+          lgpd_consent?: boolean
+          lgpd_consent_at?: string | null
           name?: string
           phone?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string | null
+          booking_id: string | null
+          created_at: string
+          id: string
+          read: boolean
+          title: string
+          type: string
+        }
+        Insert: {
+          body?: string | null
+          booking_id?: string | null
+          created_at?: string
+          id?: string
+          read?: boolean
+          title: string
+          type?: string
+        }
+        Update: {
+          body?: string | null
+          booking_id?: string | null
+          created_at?: string
+          id?: string
+          read?: boolean
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -134,6 +241,75 @@ export type Database = {
           phone?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      recurring_bookings: {
+        Row: {
+          active: boolean
+          client_id: string | null
+          client_name: string
+          client_phone: string
+          created_at: string
+          id: string
+          service: string
+          start_date: string
+          time: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          client_id?: string | null
+          client_name: string
+          client_phone: string
+          created_at?: string
+          id?: string
+          service: string
+          start_date: string
+          time: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          client_id?: string | null
+          client_name?: string
+          client_phone?: string
+          created_at?: string
+          id?: string
+          service?: string
+          start_date?: string
+          time?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -280,6 +456,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_booked_slots: {
+        Args: {
+          p_end: string
+          p_start: string
+        }
+        Returns: {
+          end_time: string
+          recurrence_group: string
+          start_time: string
+          status: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

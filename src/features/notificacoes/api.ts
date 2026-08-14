@@ -10,8 +10,7 @@ export interface AppNotification {
   created_at: string;
 }
 
-// A tabela notifications ainda não está no types.ts gerado, por isso os casts.
-const table = () => (supabase as any).from("notifications");
+const table = () => supabase.from("notifications");
 
 export async function getNotifications(limit = 30): Promise<AppNotification[]> {
   const { data, error } = await table()

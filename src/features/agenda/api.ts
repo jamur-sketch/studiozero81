@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
 export const SERVICES = [
   { name: "Corte", duration: 45, price: 50 },
@@ -176,14 +177,14 @@ export async function ensureRecurringBookings(opts?: {
   // Busca tudo que já existe na janela de uma vez para checar conflitos/duplicatas em memória.
   // Inclui os cancelados de propósito para não recriar uma semana que foi removida manualmente.
   // Usa a função RPC (security definer) porque clientes não enxergam bookings de terceiros.
-  const { data: existing, error: existingError } = await (supabase.rpc as any)("get_booked_slots", {
+  const { data: existing, error: existingError } = await supabase.rpc("get_booked_slots", {
     p_start: now.toISOString(),
     p_end: windowEnd.toISOString(),
   });
 
   if (existingError) throw new Error(existingError.message);
 
-  const rows: Record<string, any>[] = [];
+  const rows: Database["public"]["Tables"]["bookings"]["Insert"][] = [];
 
   for (const rule of rules as RecurringRule[]) {
     const svc = SERVICES.find((s) => s.name === rule.service);
@@ -265,7 +266,7 @@ export async function updateBooking(data: {
   endTime?: string;
   status?: string;
 }): Promise<void> {
-  const updates: Record<string, any> = {};
+  const updates: Database["public"]["Tables"]["bookings"]["Update"] = {};
   if (data.service !== undefined) {
     updates.service = data.service;
     const svc = SERVICES.find((s) => s.name === data.service);
@@ -327,7 +328,7 @@ export async function getAvailableTimes(
 
   // RPC (security definer): devolve só horários ocupados, sem dados pessoais,
   // para que clientes vejam a disponibilidade sem acesso aos bookings alheios.
-  const { data: busy, error } = await (supabase.rpc as any)("get_booked_slots", {
+  const { data: busy, error } = await supabase.rpc("get_booked_slots", {
     p_start: dayStart,
     p_end: dayEnd,
   });

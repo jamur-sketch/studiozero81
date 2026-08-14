@@ -37,7 +37,7 @@ export async function getPushStatus(): Promise<PushStatus> {
 
   // Só está realmente ligado se o servidor também conhecer este aparelho.
   // Sem esta checagem o botão diz "ativado" enquanto nenhum aviso chega.
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("push_subscriptions")
     .select("id")
     .eq("endpoint", sub.endpoint)
@@ -88,7 +88,7 @@ export async function enablePush(): Promise<void> {
     throw new Error("Não foi possível registrar este aparelho.");
   }
 
-  const { error } = await (supabase as any).from("push_subscriptions").upsert(
+  const { error } = await supabase.from("push_subscriptions").upsert(
     {
       user_id: userId,
       endpoint: json.endpoint,
@@ -110,5 +110,5 @@ export async function disablePush(): Promise<void> {
 
   const endpoint = sub.endpoint;
   await sub.unsubscribe();
-  await (supabase as any).from("push_subscriptions").delete().eq("endpoint", endpoint);
+  await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
 }
