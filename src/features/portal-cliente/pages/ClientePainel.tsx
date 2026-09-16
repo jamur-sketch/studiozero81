@@ -19,6 +19,8 @@ import {
   Repeat,
   CreditCard,
   Check,
+  CalendarX,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +31,8 @@ import {
   createBooking,
   createRecurringBooking,
   ensureRecurringBookings,
+  cancelBooking,
+  cancelRecurringSeries,
   type Booking,
 } from "@/features/agenda/api";
 
@@ -64,6 +68,7 @@ export default function ClientePainel() {
   const [lgpdOpen, setLgpdOpen] = useState(false);
   const [lgpdExpanded, setLgpdExpanded] = useState(false);
   const [lgpdSaving, setLgpdSaving] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -305,6 +310,12 @@ export default function ClientePainel() {
                         {formatDate(b.start_time)} • {formatTime(b.start_time)} - {formatTime(b.end_time)}
                       </p>
                     </div>
+                    <button
+                      onClick={() => setCancelTarget(b)}
+                      className="shrink-0 text-xs font-medium text-gray-400 hover:text-red-600 transition-colors px-2 py-1 rounded-lg hover:bg-red-50"
+                    >
+                      Cancelar
+                    </button>
                   </div>
                 </div>
               ))}
@@ -376,6 +387,17 @@ export default function ClientePainel() {
         />
       )}
 
+      {cancelTarget && (
+        <CancelBookingDialog
+          booking={cancelTarget}
+          onClose={() => setCancelTarget(null)}
+          onDone={() => {
+            setCancelTarget(null);
+            fetchData();
+          }}
+        />
+      )}
+
       {mustChangePassword && <ForcePasswordChangeDialog />}
       {/* Modal LGPD para usuários existentes sem consentimento */}
       {lgpdOpen && (
@@ -434,6 +456,141 @@ export default function ClientePainel() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function CancelBookingDialog({
+  booking,
+  onClose,
+  onDone,
+}: {
+  booking: Booking;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [saving, setSaving] = useState<"one" | "series" | null>(null);
+
+  const quando = new Date(booking.start_time).toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+  });
+  const hora = new Date(booking.start_time).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+
+  // Aviso quando falta pouco: o horário fica ocioso se ninguém preencher.
+  const horasRestantes = (new Date(booking.start_time).getTime() - Date.now()) / 3_600_000;
+  const emCimaDaHora = horasRestantes < 4;
+
+  const cancelar = async (escopo: "one" | "series") => {
+    setSaving(escopo);
+    try {
+      if (escopo === "series" && booking.recurrence_group) {
+        await cancelRecurringSeries(booking.recurrence_group);
+        toast({
+          title: "Horário fixo encerrado",
+          description: "Seus próximos horários desta série foram cancelados.",
+        });
+      } else {
+        await cancelBooking(booking.id);
+        toast({ title: "Agendamento cancelado" });
+      }
+      onDone();
+    } catch (err: any) {
+      toast({ title: "Erro ao cancelar", description: err.message, variant: "destructive" });
+      setSaving(null);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md"
+        style={{ animation: "fadeInScale 0.2s ease-out" }}
+      >
+        <div className="px-6 pt-6 pb-4 flex items-start gap-3 border-b border-gray-100">
+          <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+            <CalendarX className="h-5 w-5 text-red-600" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-gray-900">Cancelar agendamento</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {booking.service} • {quando} às {hora}
+            </p>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-3">
+          {emCimaDaHora && (
+            <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800 leading-relaxed">
+                Falta pouco para o seu horário. Se puder, avise a barbearia pelo WhatsApp também.
+              </p>
+            </div>
+          )}
+
+          {booking.recurring && booking.recurrence_group ? (
+            <>
+              <p className="text-sm text-gray-600 mb-1">
+                Este é um horário fixo semanal. O que você quer fazer?
+              </p>
+              <button
+                onClick={() => cancelar("one")}
+                disabled={saving !== null}
+                className="w-full text-left px-4 py-3.5 rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all disabled:opacity-50"
+              >
+                <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  {saving === "one" && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Cancelar só este dia
+                </span>
+                <span className="block text-xs text-gray-500 mt-0.5">
+                  Você continua com o horário nas próximas semanas.
+                </span>
+              </button>
+              <button
+                onClick={() => cancelar("series")}
+                disabled={saving !== null}
+                className="w-full text-left px-4 py-3.5 rounded-xl border border-red-200 bg-red-50/50 hover:bg-red-50 transition-all disabled:opacity-50"
+              >
+                <span className="flex items-center gap-2 text-sm font-semibold text-red-700">
+                  {saving === "series" && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Encerrar o horário fixo
+                </span>
+                <span className="block text-xs text-red-600/80 mt-0.5">
+                  Libera este horário definitivamente, incluindo as próximas semanas.
+                </span>
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => cancelar("one")}
+              disabled={saving !== null}
+              className="w-full py-3.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {saving === "one" ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Cancelando...
+                </>
+              ) : (
+                "Confirmar cancelamento"
+              )}
+            </button>
+          )}
+
+          <button
+            onClick={onClose}
+            disabled={saving !== null}
+            className="w-full py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            Manter agendamento
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
