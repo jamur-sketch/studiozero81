@@ -42,8 +42,30 @@
       memory: {},
     };
   }
+  // Primeira abertura: mostra o app preenchido com exemplos, que se apagam em "Começar do zero".
+  function sampleData() {
+    const d = defaultData();
+    d.sample = true;
+    const now = currentMonth();
+    const [c1, c2, c3] = d.cards;
+    const ana = { id: uid(), name: 'Ana (exemplo)', phone: '' };
+    const bruno = { id: uid(), name: 'Bruno (exemplo)', phone: '' };
+    const carla = { id: uid(), name: 'Carla (exemplo)', phone: '' };
+    d.people.push(ana, bruno, carla);
+    const add = (cardId, personId, description, total, value, current, paidUntil) => {
+      const p = { id: uid(), cardId, personId, description, total, installmentValue: value, firstMonth: addMonths(now, -(current - 1)), purchaseDate: null, paid: {}, source: 'manual' };
+      for (let i = 1; i <= paidUntil; i++) p.paid[i] = today();
+      d.purchases.push(p);
+    };
+    add(c1.id, ana.id, 'Magazine Luiza – geladeira', 10, 289.9, 4, 4);
+    add(c2.id, ana.id, 'Mercado Livre – celular', 12, 145.5, 2, 1);
+    add(c1.id, bruno.id, 'Casas Bahia – notebook', 8, 412.0, 6, 4);
+    add(c3.id, carla.id, 'Renner', 3, 96.3, 1, 0);
+    add(c2.id, carla.id, 'Amazon – air fryer', 6, 74.83, 5, 5);
+    return d;
+  }
   let data;
-  try { data = JSON.parse(localStorage.getItem(STORE_KEY)) || defaultData(); } catch { data = defaultData(); }
+  try { data = JSON.parse(localStorage.getItem(STORE_KEY)) || sampleData(); } catch { data = sampleData(); }
   data.memory = data.memory || {};
   function save() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch { toast('Não foi possível salvar no aparelho'); }
@@ -108,7 +130,7 @@
   }
 
   function render() {
-    const titles = { resumo: 'Resumo', pessoas: 'Pessoas', pessoa: person(state.personId)?.name || 'Pessoa', lancar: 'Lançar parcela', importar: 'Ler extrato', ajustes: 'Ajustes' };
+    const titles = { resumo: 'Resumo', pessoas: 'Pessoas', pessoa: person(state.personId)?.name || 'Pessoa', lancar: 'Lançar parcela', importar: 'Ler extrato', ajustes: 'Cartões e backup' };
     $('#title').textContent = titles[state.tab];
     $('#monthNav').style.visibility = ['resumo', 'pessoa'].includes(state.tab) ? 'visible' : 'hidden';
     $('#monthLabel').textContent = monthLabel(state.month);
@@ -144,7 +166,8 @@
     const total = sum(list);
     const received = sum(list.filter((i) => i.paidAt));
     const late = overdue();
-    let html = `<section class="hero">
+    let html = data.sample ? `<div class="sample">Estes são dados de exemplo para você ver como funciona.<button class="btn ghost" data-clear-sample>Começar do zero</button></div>` : '';
+    html += `<section class="hero">
       <small>A receber em ${monthLabel(state.month).toLowerCase()}</small>
       <div class="big">${brl(total)}</div>
       ${progress(received, total)}
@@ -152,7 +175,7 @@
     </section>`;
 
     if (late.length) {
-      html += `<button class="alert" data-goto="pessoas">⚠️ ${late.length} parcela(s) atrasada(s) de meses anteriores · ${brl(sum(late))}</button>`;
+      html += `<button class="alert" data-goto="pessoas">${late.length} parcela(s) atrasada(s) de meses anteriores · ${brl(sum(late))}</button>`;
     }
 
     html += '<h2>Por pessoa</h2>';
@@ -222,9 +245,10 @@
       <div class="hero-row"><span>Pago <b>${brl(r)}</b></span><span>Deve ao todo <b>${brl(sum(allPending))}</b></span></div>
     </section>
     <div class="actions">
-      <button class="btn" data-pay-month ${monthItems.some((i) => !i.paidAt) ? '' : 'disabled'}>✓ Pagou o mês</button>
-      <button class="btn whatsapp" data-whatsapp>WhatsApp</button>
-      <button class="btn ghost" data-edit-person="${p.id}">Editar</button>
+      <button class="btn" data-pay-month ${monthItems.some((i) => !i.paidAt) ? '' : 'disabled'}>Pagou o mês</button>
+      <a class="btn whatsapp" href="${waLink(p)}" target="_blank" rel="noopener">WhatsApp</a>
+      <button class="btn ghost" data-copy-msg>Copiar cobrança</button>
+      <button class="btn ghost" data-edit-person="${p.id}">Editar pessoa</button>
     </div>`;
 
     if (late.length) {
@@ -246,6 +270,12 @@
       }).join('') + '</ul>';
     }
     view.innerHTML = html;
+  }
+
+  function waLink(p) {
+    const phone = (p.phone || '').replace(/\D/g, '');
+    const full = phone && phone.length <= 11 ? '55' + phone : phone;
+    return `https://wa.me/${full}?text=${encodeURIComponent(whatsappMessage(p))}`;
   }
 
   function whatsappMessage(p) {
@@ -414,7 +444,7 @@
       <form id="importForm" class="form">
         <label>Cartão<select name="cardId">${data.cards.map((c) => `<option value="${c.id}" ${imp?.cardId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>
         <label>Fatura de<input type="month" name="month" value="${defMonth}" required></label>
-        <label class="file">📎 Escolher arquivo (PDF, CSV, TXT)<input type="file" name="file" accept=".pdf,.csv,.txt,.ofx,application/pdf,text/*"></label>
+        <label class="file">Escolher arquivo (PDF, CSV, TXT)<input type="file" name="file" accept=".pdf,.csv,.txt,.ofx,application/pdf,text/*"></label>
         <label>…ou cole o texto da fatura<textarea name="text" rows="6" placeholder="12/05  LOJA EXEMPLO  03/10  150,00"></textarea></label>
         <button class="btn block" type="submit">Ler extrato</button>
       </form>`;
@@ -444,7 +474,7 @@
     if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf') return readPdf(file);
     const buf = await file.arrayBuffer();
     let text = new TextDecoder('utf-8').decode(buf);
-    if (text.includes('�')) text = new TextDecoder('iso-8859-1').decode(buf);
+    if (text.includes('\ufffd')) text = new TextDecoder('iso-8859-1').decode(buf);
     return text;
   }
 
@@ -543,8 +573,10 @@
       <button class="btn ghost block" data-edit-card="">＋ Adicionar cartão</button>
       <h2>Backup</h2>
       <p class="muted">Os dados ficam só neste celular. Faça um backup de vez em quando e guarde o arquivo (WhatsApp, Drive, e-mail).</p>
-      <div class="actions"><button class="btn" data-backup>⬇️ Salvar backup</button>
-      <label class="btn ghost">⬆️ Restaurar<input type="file" accept=".json,application/json" data-restore hidden></label></div>
+      <div class="actions"><button class="btn" data-backup>Fazer backup</button>
+      <label class="btn ghost">Restaurar de arquivo<input type="file" accept=".json,application/json" data-restore hidden></label></div>
+      <label>…ou cole o texto do backup<textarea id="restoreText" rows="3" placeholder='{"cards":[…'></textarea></label>
+      <button class="btn ghost block" data-restore-text>Restaurar do texto</button>
       <p class="muted small">${data.purchases.length} compra(s) · ${data.people.length} pessoa(s)</p>`;
   }
 
@@ -567,13 +599,31 @@
     };
   }
 
-  function downloadBackup() {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  // Confirmação dentro do app (o confirm() do navegador nem sempre aparece).
+  function ask(message, okLabel, onOk) {
+    ask.onOk = onOk;
+    openSheet(`<h3>${esc(message)}</h3>
+      <div class="actions"><button class="btn danger-fill" data-ask-ok>${esc(okLabel)}</button><button class="btn ghost" data-close-sheet>Cancelar</button></div>`);
+  }
+
+  function backupSheet() {
+    const json = JSON.stringify(data);
+    openSheet(`<h3>Backup</h3>
+      <p class="muted">Guarde este arquivo no WhatsApp, Drive ou e-mail. Se o botão de arquivo não funcionar, copie o texto abaixo e cole numa conversa com você mesma.</p>
+      <div class="actions"><button class="btn" data-backup-file>Salvar arquivo</button><button class="btn ghost" data-backup-copy>Copiar texto</button></div>
+      <textarea id="backupText" rows="6" readonly>${esc(json)}</textarea>`);
+  }
+  async function backupFile() {
     const name = `cartoes-backup-${today()}.json`;
-    const fileObj = new File([blob], name, { type: 'application/json' });
-    if (navigator.canShare && navigator.canShare({ files: [fileObj] })) {
-      navigator.share({ files: [fileObj], title: 'Backup cartões' }).catch(() => {});
-      return;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    try {
+      const fileObj = new File([blob], name, { type: 'application/json' });
+      if (navigator.canShare && navigator.canShare({ files: [fileObj] })) {
+        await navigator.share({ files: [fileObj], title: 'Backup cartões' });
+        return;
+      }
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
     }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -582,9 +632,19 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
+  function restoreFrom(txt) {
+    let d;
+    try { d = JSON.parse(txt); } catch { return toast('Esse texto não é um backup válido'); }
+    if (!d || !Array.isArray(d.cards) || !Array.isArray(d.purchases)) return toast('Esse texto não é um backup válido');
+    ask('Substituir os dados atuais pelo backup?', 'Substituir', () => {
+      data = d; data.memory = data.memory || {}; data.people = data.people || [];
+      save(); toast('Backup restaurado'); render();
+    });
+  }
+
   // ---------- eventos ----------
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-tab],[data-goto],[data-month-step],[data-open-person],[data-open-purchase],[data-toggle],[data-close-sheet],[data-new-person],[data-edit-person],[data-delete-person],[data-pay-month],[data-whatsapp],[data-edit-purchase],[data-delete-purchase],[data-edit-card],[data-delete-card],[data-import-cancel],[data-import-save],[data-backup],[data-show-raw]');
+    const t = e.target.closest('[data-tab],[data-goto],[data-month-step],[data-open-person],[data-open-purchase],[data-toggle],[data-close-sheet],[data-new-person],[data-edit-person],[data-delete-person],[data-pay-month],[data-edit-purchase],[data-delete-purchase],[data-edit-card],[data-delete-card],[data-import-cancel],[data-import-save],[data-backup],[data-backup-file],[data-backup-copy],[data-restore-text],[data-show-raw],[data-ask-ok],[data-clear-sample],[data-copy-msg]');
     if (!t) return;
     const d = t.dataset;
     if (d.tab) {
@@ -604,44 +664,61 @@
     }
     if (d.openPerson) return go('pessoa', { personId: d.openPerson });
     if (d.openPurchase) return purchaseSheet(d.openPurchase);
+    if ('askOk' in d) { const fn = ask.onOk; ask.onOk = null; closeSheet(); return fn && fn(); }
     if ('closeSheet' in d) return closeSheet();
     if ('newPerson' in d) { personForm.onCreate = null; return personForm(null); }
     if (d.editPerson) return personForm(person(d.editPerson));
     if (d.deletePerson) {
-      const n = data.purchases.filter((x) => x.personId === d.deletePerson).length;
-      if (!confirm(n ? `Excluir a pessoa e as ${n} compra(s) dela?` : 'Excluir esta pessoa?')) return;
-      data.people = data.people.filter((x) => x.id !== d.deletePerson);
-      data.purchases = data.purchases.filter((x) => x.personId !== d.deletePerson);
-      save(); closeSheet(); return go('pessoas');
+      const id = d.deletePerson;
+      const n = data.purchases.filter((x) => x.personId === id).length;
+      return ask(n ? `Excluir a pessoa e as ${n} compra(s) dela?` : 'Excluir esta pessoa?', 'Excluir', () => {
+        data.people = data.people.filter((x) => x.id !== id);
+        data.purchases = data.purchases.filter((x) => x.personId !== id);
+        save(); go('pessoas');
+      });
     }
     if ('payMonth' in d) {
       for (const i of installmentsIn(state.month, (x) => x.personId === state.personId)) if (!i.paidAt) i.purchase.paid[i.n] = today();
       save(); toast('Mês marcado como pago'); return render();
     }
-    if ('whatsapp' in d) {
-      const p = person(state.personId);
-      const phone = (p.phone || '').replace(/\D/g, '');
-      const full = phone && phone.length <= 11 ? '55' + phone : phone;
-      window.open(`https://wa.me/${full}?text=${encodeURIComponent(whatsappMessage(p))}`, '_blank');
+    if ('copyMsg' in d) {
+      const text = whatsappMessage(person(state.personId));
+      navigator.clipboard.writeText(text).then(() => toast('Mensagem copiada'), () => openSheet(`<h3>Mensagem</h3><textarea rows="10" readonly>${esc(text)}</textarea>`));
       return;
     }
     if (d.editPurchase) return editPurchase(d.editPurchase);
     if (d.deletePurchase) {
-      if (!confirm('Excluir esta compra e todas as parcelas?')) return;
-      data.purchases = data.purchases.filter((x) => x.id !== d.deletePurchase);
-      save(); closeSheet(); return render();
+      const id = d.deletePurchase;
+      return ask('Excluir esta compra e todas as parcelas?', 'Excluir', () => {
+        data.purchases = data.purchases.filter((x) => x.id !== id);
+        save(); render();
+      });
     }
     if ('editCard' in d) return cardForm(d.editCard);
     if (d.deleteCard) {
-      const n = data.purchases.filter((x) => x.cardId === d.deleteCard).length;
+      const id = d.deleteCard;
+      const n = data.purchases.filter((x) => x.cardId === id).length;
       if (n) return toast(`Este cartão tem ${n} compra(s); exclua ou mova antes`);
-      if (!confirm('Excluir este cartão?')) return;
-      data.cards = data.cards.filter((x) => x.id !== d.deleteCard);
-      save(); closeSheet(); return render();
+      return ask('Excluir este cartão?', 'Excluir', () => {
+        data.cards = data.cards.filter((x) => x.id !== id);
+        save(); render();
+      });
+    }
+    if ('clearSample' in d) {
+      return ask('Apagar os exemplos e começar do zero?', 'Começar do zero', () => {
+        data = defaultData(); save(); toast('Pronto, pode cadastrar'); go('resumo');
+      });
     }
     if ('importCancel' in d) { state.import = { cardId: state.import.cardId, month: state.import.month }; return render(); }
     if ('importSave' in d) return saveImport();
-    if ('backup' in d) return downloadBackup();
+    if ('backup' in d) return backupSheet();
+    if ('backupFile' in d) return backupFile();
+    if ('backupCopy' in d) {
+      const ta = $('#backupText');
+      navigator.clipboard.writeText(ta.value).then(() => toast('Backup copiado'), () => { ta.focus(); ta.select(); toast('Texto selecionado, é só copiar'); });
+      return;
+    }
+    if ('restoreText' in d) return restoreFrom($('#restoreText').value);
     if ('showRaw' in d) return openSheet(`<h3>Texto lido</h3><pre class="raw">${esc(state.import.rawText)}</pre>`);
   });
 
@@ -666,19 +743,14 @@
       return render();
     }
     if ('restore' in t.dataset && t.files[0]) {
-      t.files[0].text().then((txt) => {
-        const d = JSON.parse(txt);
-        if (!Array.isArray(d.cards) || !Array.isArray(d.purchases)) throw new Error('arquivo inválido');
-        if (!confirm('Substituir os dados atuais pelo backup?')) return;
-        data = d; data.memory = data.memory || {}; data.people = data.people || [];
-        save(); toast('Backup restaurado'); render();
-      }).catch(() => toast('Arquivo de backup inválido'));
+      t.files[0].text().then(restoreFrom, () => toast('Não consegui abrir esse arquivo'));
+      t.value = '';
     }
   });
 
   render();
 
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
+  try {
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  } catch { /* sem modo offline aqui */ }
 })();
