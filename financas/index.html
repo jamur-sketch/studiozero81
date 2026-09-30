@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Cartões</title>
+  <meta name="description" content="Controle das parcelas dos cartões emprestados" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Cartões" />
+  <meta name="theme-color" content="#0f766e" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1 id="title">Resumo</h1>
+    <div class="month-nav" id="monthNav">
+      <button class="icon-btn" data-month-step="-1" aria-label="Mês anterior">‹</button>
+      <span id="monthLabel"></span>
+      <button class="icon-btn" data-month-step="1" aria-label="Próximo mês">›</button>
+    </div>
+  </header>
+
+  <main id="view"></main>
+
+  <nav class="tabbar">
+    <button data-tab="resumo" class="active"><span>🏠</span>Resumo</button>
+    <button data-tab="pessoas"><span>👥</span>Pessoas</button>
+    <button data-tab="lancar" class="tab-add"><span>＋</span>Lançar</button>
+    <button data-tab="importar"><span>📄</span>Extrato</button>
+    <button data-tab="ajustes"><span>⚙️</span>Ajustes</button>
+  </nav>
+
+  <div id="sheet" class="sheet hidden" role="dialog" aria-modal="true">
+    <div class="sheet-backdrop" data-close-sheet></div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="parser.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
