@@ -3,7 +3,8 @@
 // fica em Ajustes.
 (function () {
   const STORE_KEY = 'cartoes-v1';
-  const COLORS = ['#7c3aed', '#ea580c', '#0891b2', '#16a34a', '#db2777', '#ca8a04', '#475569', '#dc2626'];
+  // Tons de cartão "metal": grafite, azul-noite, bordô, esmeralda, ouro, platina, ametista, cobre.
+  const COLORS = ['#23262d', '#1d3557', '#6b1f2e', '#165a45', '#8a6a3a', '#646a73', '#4a2c6f', '#7a3b22'];
   const MONTH_NAMES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
   // ---------- utilidades ----------
@@ -67,6 +68,9 @@
   let data;
   try { data = JSON.parse(localStorage.getItem(STORE_KEY)) || sampleData(); } catch { data = sampleData(); }
   data.memory = data.memory || {};
+  // cores da primeira versão -> tons metálicos atuais
+  const OLD_COLORS = ['#7c3aed', '#ea580c', '#0891b2', '#16a34a', '#db2777', '#ca8a04', '#475569', '#dc2626'];
+  for (const c of data.cards) { const k = OLD_COLORS.indexOf(c.color); if (k >= 0) c.color = COLORS[k]; }
   function save() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch { toast('Não foi possível salvar no aparelho'); }
   }
@@ -138,22 +142,35 @@
   }
 
   // ---------- componentes ----------
-  const cardChip = (c) => (c ? `<span class="chip" style="--c:${c.color}">${esc(c.name)}</span>` : '<span class="chip">sem cartão</span>');
+  const cardChip = (c) => `<span class="chip"><i style="--c:${c ? c.color : '#888'}"></i>${esc(c ? c.name : 'sem cartão')}</span>`;
+  // Valor com os centavos menores, como num extrato.
+  function money(n) {
+    const [int, cents] = brl(n).replace(/\u00a0/g, ' ').replace('R$ ', '').split(',');
+    return `<span class="money"><span class="cur">R$</span>${int}<span class="cents">,${cents}</span></span>`;
+  }
+  const initials = (name) => String(name || '?').replace(/\(.*?\)/g, '').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
+  function cardFace(c, amount, count) {
+    return `<article class="cardface" style="--c:${c.color}">
+      <header><span class="cf-name">${esc(c.name)}</span><svg class="cf-wave" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7c2 3 2 7 0 10M12 5c3 4 3 10 0 14M16 3c4 5 4 13 0 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></header>
+      <div class="cf-chip"></div>
+      <footer><div><small>Terceiros · ${monthLabel(state.month, true)}</small>${money(amount)}</div><div class="cf-due"><small>${count} parc.</small>vence ${c.dueDay || '–'}</div></footer>
+    </article>`;
+  }
   function progress(paid, total) {
     const pct = total ? Math.round((paid / total) * 100) : 0;
-    return `<div class="bar"><div style="width:${pct}%"></div></div>`;
+    return `<div class="bar" role="img" aria-label="${pct}% pago"><div style="width:${pct}%"></div></div>`;
   }
   function installmentRow(i, opts = {}) {
     const p = i.purchase;
     const who = opts.showPerson ? `<small>${esc(person(p.personId)?.name || 'Sem pessoa')}</small>` : '';
     const when = opts.showMonth ? `<small>${monthLabel(i.month, true)}</small>` : '';
     return `<li class="inst ${i.paidAt ? 'paid' : ''}">
-      <button class="check" data-toggle="${p.id}:${i.n}" aria-label="Marcar como pago">${i.paidAt ? '✓' : ''}</button>
+      <button class="check" data-toggle="${p.id}:${i.n}" aria-label="Marcar como pago"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <div class="inst-main" data-open-purchase="${p.id}">
         <strong>${esc(p.description)}</strong>
         <div class="meta">${cardChip(card(p.cardId))} <small>${p.total > 1 ? `${i.n}/${p.total}` : 'à vista'}</small> ${who} ${when}</div>
       </div>
-      <div class="inst-value">${brl(i.value)}</div>
+      <div class="inst-value">${money(i.value)}</div>
     </li>`;
   }
   function emptyState(msg, action) {
@@ -168,15 +185,20 @@
     const late = overdue();
     let html = data.sample ? `<div class="sample">Estes são dados de exemplo para você ver como funciona.<button class="btn ghost" data-clear-sample>Começar do zero</button></div>` : '';
     html += `<section class="hero">
-      <small>A receber em ${monthLabel(state.month).toLowerCase()}</small>
-      <div class="big">${brl(total)}</div>
+      <span class="eyebrow">A receber · ${monthLabel(state.month).toLowerCase()}</span>
+      <div class="big">${money(total)}</div>
       ${progress(received, total)}
-      <div class="hero-row"><span>Recebido <b>${brl(received)}</b></span><span>Falta <b>${brl(round2(total - received))}</b></span></div>
+      <div class="hero-row"><div><small>Recebido</small>${money(received)}</div><div><small>Falta</small>${money(round2(total - received))}</div></div>
     </section>`;
 
     if (late.length) {
-      html += `<button class="alert" data-goto="pessoas">${late.length} parcela(s) atrasada(s) de meses anteriores · ${brl(sum(late))}</button>`;
+      html += `<button class="alert" data-goto="pessoas"><span class="alert-dot"></span><span class="grow">${late.length} parcela(s) atrasada(s) de meses anteriores</span><b>${brl(sum(late))}</b></button>`;
     }
+
+    html += '<h2>Cartões</h2><div class="wallet">' + data.cards.map((c) => {
+      const items = list.filter((i) => i.purchase.cardId === c.id);
+      return cardFace(c, sum(items), items.length);
+    }).join('') + '</div>';
 
     html += '<h2>Por pessoa</h2>';
     const byPerson = {};
@@ -190,28 +212,20 @@
         const t = sum(items), r = sum(items.filter((i) => i.paidAt));
         const done = r >= t;
         return `<li class="row" data-open-person="${id}">
-          <div class="avatar">${esc((person(id)?.name || '?')[0].toUpperCase())}</div>
-          <div class="grow"><strong>${esc(person(id)?.name || 'Sem pessoa')}</strong>${progress(r, t)}<small>${items.length} parcela(s) · ${done ? 'pago ✓' : `falta ${brl(t - r)}`}</small></div>
-          <div class="amount ${done ? 'ok' : ''}">${brl(t)}</div>
+          <div class="avatar">${esc(initials(person(id)?.name))}</div>
+          <div class="grow"><strong>${esc(person(id)?.name || 'Sem pessoa')}</strong>${progress(r, t)}<small>${items.length} parcela(s) · ${done ? '<span class="ok">quitado</span>' : `falta ${brl(round2(t - r))}`}</small></div>
+          <div class="amount ${done ? 'ok' : ''}">${money(t)}</div>
         </li>`;
       }).join('') + '</ul>';
     }
 
-    html += '<h2>Por cartão</h2><ul class="list">';
-    for (const c of data.cards) {
-      const items = list.filter((i) => i.purchase.cardId === c.id);
-      html += `<li class="row"><div class="card-dot" style="background:${c.color}"></div>
-        <div class="grow"><strong>${esc(c.name)}</strong><small>vence dia ${c.dueDay || '-'} · ${items.length} parcela(s) de terceiros</small></div>
-        <div class="amount">${brl(sum(items))}</div></li>`;
-    }
-    html += '</ul>';
     view.innerHTML = html;
   }
 
   // ---------- Pessoas ----------
   function renderPessoas() {
     const now = currentMonth();
-    let html = '<button class="btn block" data-new-person>＋ Nova pessoa</button>';
+    let html = '<button class="btn block" data-new-person>Nova pessoa</button>';
     if (!data.people.length) {
       html += emptyState('Cadastre as pessoas para quem os cartões são emprestados.');
     } else {
@@ -220,10 +234,10 @@
         const late = pending.filter((i) => i.month < now);
         const month = pending.filter((i) => i.month === now);
         return `<li class="row" data-open-person="${p.id}">
-          <div class="avatar">${esc(p.name[0].toUpperCase())}</div>
+          <div class="avatar">${esc(initials(p.name))}</div>
           <div class="grow"><strong>${esc(p.name)}</strong>
             <small>${late.length ? `<span class="late">${brl(sum(late))} atrasado</span> · ` : ''}este mês ${brl(sum(month))}</small></div>
-          <div class="amount"><small>deve ao todo</small>${brl(sum(pending))}</div>
+          <div class="amount"><small>em aberto</small>${money(sum(pending))}</div>
         </li>`;
       }).join('') + '</ul>';
     }
@@ -240,9 +254,9 @@
     const t = sum(monthItems), r = sum(monthItems.filter((i) => i.paidAt));
 
     let html = `<section class="hero small">
-      <small>Parcelas de ${monthLabel(state.month).toLowerCase()}</small>
-      <div class="big">${brl(t)}</div>${progress(r, t)}
-      <div class="hero-row"><span>Pago <b>${brl(r)}</b></span><span>Deve ao todo <b>${brl(sum(allPending))}</b></span></div>
+      <div class="hero-person"><div class="avatar lg">${esc(initials(p.name))}</div><span class="eyebrow">Parcelas · ${monthLabel(state.month).toLowerCase()}</span></div>
+      <div class="big">${money(t)}</div>${progress(r, t)}
+      <div class="hero-row"><div><small>Pago</small>${money(r)}</div><div><small>Em aberto no total</small>${money(sum(allPending))}</div></div>
     </section>
     <div class="actions">
       <button class="btn" data-pay-month ${monthItems.some((i) => !i.paidAt) ? '' : 'disabled'}>Pagou o mês</button>
@@ -266,7 +280,7 @@
         return `<li class="row" data-open-purchase="${x.id}"><div class="grow"><strong>${esc(x.description)}</strong>
           <div class="meta">${cardChip(card(x.cardId))} <small>${x.total}x ${brl(x.installmentValue)} · até ${monthLabel(last, true)}</small></div>
           ${progress(paid, x.total)}<small>${paid} de ${x.total} pagas</small></div>
-          <div class="amount">${brl(x.installmentValue * x.total)}</div></li>`;
+          <div class="amount">${money(x.installmentValue * x.total)}</div></li>`;
       }).join('') + '</ul>';
     }
     view.innerHTML = html;
@@ -569,8 +583,8 @@
   // ---------- Ajustes ----------
   function renderAjustes() {
     view.innerHTML = `<h2>Cartões</h2><ul class="list">${data.cards.map((c) => `<li class="row" data-edit-card="${c.id}">
-        <div class="card-dot" style="background:${c.color}"></div><div class="grow"><strong>${esc(c.name)}</strong><small>vence dia ${c.dueDay || '-'}</small></div><span class="muted">Editar</span></li>`).join('')}</ul>
-      <button class="btn ghost block" data-edit-card="">＋ Adicionar cartão</button>
+        <div class="card-dot" style="--c:${c.color}"></div><div class="grow"><strong>${esc(c.name)}</strong><small>vence dia ${c.dueDay || '-'}</small></div><span class="link">Editar</span></li>`).join('')}</ul>
+      <button class="btn ghost block" data-edit-card="">Adicionar cartão</button>
       <h2>Backup</h2>
       <p class="muted">Os dados ficam só neste celular. Faça um backup de vez em quando e guarde o arquivo (WhatsApp, Drive, e-mail).</p>
       <div class="actions"><button class="btn" data-backup>Fazer backup</button>
@@ -586,7 +600,7 @@
       <form id="cardForm" class="form">
         <label>Nome<input name="name" required value="${esc(c?.name)}" placeholder="Ex.: Nubank" autocomplete="off"></label>
         <label>Dia do vencimento<input name="dueDay" type="number" min="1" max="31" inputmode="numeric" value="${c?.dueDay || 10}"></label>
-        <label>Cor</label><div class="colors">${COLORS.map((k) => `<label><input type="radio" name="color" value="${k}" ${(c?.color || COLORS[data.cards.length % COLORS.length]) === k ? 'checked' : ''}><span style="background:${k}"></span></label>`).join('')}</div>
+        <label>Cor</label><div class="colors">${COLORS.map((k) => `<label><input type="radio" name="color" value="${k}" ${(c?.color || COLORS[data.cards.length % COLORS.length]) === k ? 'checked' : ''}><span style="--c:${k}"></span></label>`).join('')}</div>
         <div class="actions"><button class="btn" type="submit">Salvar</button><button class="btn ghost" type="button" data-close-sheet>Cancelar</button></div>
         ${c ? `<button class="btn danger block" type="button" data-delete-card="${c.id}">Excluir cartão</button>` : ''}
       </form>`);
