@@ -63,6 +63,17 @@ const dbHeaders = {
   "Content-Type": "application/json",
 };
 
+async function buscarNotificacao(id: string): Promise<NotificationRow | null> {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/notifications` +
+      `?select=id,title,body,barbershop_id&id=eq.${encodeURIComponent(id)}`,
+    { headers: dbHeaders },
+  );
+  if (!res.ok) throw new Error(`Falha ao ler notificação: ${res.status} ${await res.text()}`);
+  const linhas = (await res.json()) as NotificationRow[];
+  return linhas[0] ?? null;
+}
+
 async function listarInscricoes(barbershopId: string): Promise<PushSubscriptionRow[]> {
   if (!SERVICE_ROLE_KEY) {
     throw new Error(
@@ -98,12 +109,18 @@ Deno.serve(async (req) => {
     const payload = await req.json();
 
     // Formato enviado pelo Database Webhook: { type, table, record, ... }
-    const record: NotificationRow | undefined = payload.record ?? payload;
-    if (!record?.title) {
-      return json({ error: "Payload sem notificação." }, 400);
+    const enviado: Partial<NotificationRow> | undefined = payload.record ?? payload;
+    if (!enviado?.id) {
+      return json({ error: "Payload sem identificador de notificação." }, 400);
     }
-    if (!record.barbershop_id) {
-      return json({ error: "Notificação sem barbearia — envio recusado." }, 400);
+
+    // Nada do corpo da requisição é usado como verdade. O portão do Supabase
+    // aceita qualquer usuário logado, então um cliente mal-intencionado poderia
+    // forjar título, texto e barbearia e disparar push para a base de outra
+    // loja. Relendo a notificação no banco, só sai o que realmente existe.
+    const record = await buscarNotificacao(String(enviado.id));
+    if (!record) {
+      return json({ error: "Notificação inexistente — envio recusado." }, 404);
     }
 
     const subs = await listarInscricoes(record.barbershop_id);

@@ -30,15 +30,9 @@ serve(async (req) => {
       return json({ error: "Sessão inválida." }, 401);
     }
 
-    const { data: roles } = await admin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", caller.user.id)
-      .eq("role", "admin");
-
-    if (!roles || roles.length === 0) {
-      return json({ error: "Apenas administradores podem redefinir senhas." }, 403);
-    }
+    // A autorização de verdade acontece no passo 4, contra a barbearia do
+    // cliente. Um papel global de "admin" não serve: diz que a pessoa
+    // administra alguma loja, não que administra esta.
 
     // 2) Lê os dados do pedido.
     const { clientId, tempPassword } = await req.json();
@@ -49,7 +43,7 @@ serve(async (req) => {
     // 3) Descobre o usuário de autenticação ligado ao cliente.
     const { data: client, error: clientError } = await admin
       .from("clients")
-      .select("user_id")
+      .select("user_id, barbershop_id")
       .eq("id", clientId)
       .single();
 
@@ -57,7 +51,22 @@ serve(async (req) => {
       return json({ error: "Este cliente ainda não tem uma conta de acesso." }, 404);
     }
 
-    // 4) Define a senha temporária e marca que precisa trocar no próximo acesso.
+    // 4) Quem chama precisa ser admin DESTA barbearia.
+    // Sem esta checagem, o dono de uma barbearia trocava a senha de um cliente
+    // de outra e assumia a conta dele — vazando histórico e dados pessoais.
+    const { data: vinculo } = await admin
+      .from("barbershop_members")
+      .select("role")
+      .eq("user_id", caller.user.id)
+      .eq("barbershop_id", client.barbershop_id)
+      .eq("role", "admin")
+      .maybeSingle();
+
+    if (!vinculo) {
+      return json({ error: "Este cliente não pertence à sua barbearia." }, 403);
+    }
+
+    // 5) Define a senha temporária e marca que precisa trocar no próximo acesso.
     const { data: existing } = await admin.auth.admin.getUserById(client.user_id);
     const currentMeta = existing?.user?.user_metadata || {};
 
