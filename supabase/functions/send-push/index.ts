@@ -45,6 +45,7 @@ interface NotificationRow {
   id: string;
   title: string;
   body: string | null;
+  barbershop_id: string;
 }
 
 interface PushSubscriptionRow {
@@ -62,14 +63,17 @@ const dbHeaders = {
   "Content-Type": "application/json",
 };
 
-async function listarInscricoes(): Promise<PushSubscriptionRow[]> {
+async function listarInscricoes(barbershopId: string): Promise<PushSubscriptionRow[]> {
   if (!SERVICE_ROLE_KEY) {
     throw new Error(
       "Nenhuma chave de acesso ao banco configurada. Defina o secret PUSH_DB_KEY.",
     );
   }
+  // Filtra pela barbearia: esta função roda com acesso total ao banco, então
+  // sem o filtro o dono de uma barbearia receberia os avisos de outra.
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/push_subscriptions?select=id,endpoint,p256dh,auth`,
+    `${SUPABASE_URL}/rest/v1/push_subscriptions` +
+      `?select=id,endpoint,p256dh,auth&barbershop_id=eq.${encodeURIComponent(barbershopId)}`,
     { headers: dbHeaders },
   );
   if (!res.ok) throw new Error(`Falha ao ler inscrições: ${res.status} ${await res.text()}`);
@@ -98,8 +102,11 @@ Deno.serve(async (req) => {
     if (!record?.title) {
       return json({ error: "Payload sem notificação." }, 400);
     }
+    if (!record.barbershop_id) {
+      return json({ error: "Notificação sem barbearia — envio recusado." }, 400);
+    }
 
-    const subs = await listarInscricoes();
+    const subs = await listarInscricoes(record.barbershop_id);
     if (!subs || subs.length === 0) {
       return json({ sent: 0, note: "Nenhum aparelho inscrito." });
     }
