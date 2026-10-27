@@ -41,3 +41,9 @@ Layout 1080x1920: cards a partir de y=170, legendas em y≈1440 (acima da área 
 node reels/render.mjs stills 2 9 20   # confere quadros em reels/out/
 node reels/render.mjs video           # gera reels/out/reel.mp4
 ```
+
+Se passar do tempo alvo, acelere o vídeo pronto sem mudar o tom de voz (1,08x deixa 98 s em ~90 s):
+```sh
+ffmpeg -i reels/out/reel.mp4 -filter_complex "[0:v]setpts=PTS/1.08,fps=30[v];[0:a]atempo=1.08[a]" -map "[v]" -map "[a]" \
+  -c:v libx264 -crf 18 -movflags +faststart -c:a aac -b:a 192k reels/out/reel-1.08x.mp4
+```
