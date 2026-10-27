@@ -1,7 +1,25 @@
 import React from "react";
 import { Composition } from "remotion";
-import { Reel, TOTAL_FRAMES } from "./Reel";
+import { getDuration, Reel } from "./Reel";
+import { toqan } from "./edits/toqan";
+import type { EditConfig } from "./types";
+
+// One entry per Reels. Render with: node render.mjs video <id>
+export const EDITS: EditConfig[] = [toqan];
 
 export const Root: React.FC = () => (
-  <Composition id="Reel" component={Reel} durationInFrames={TOTAL_FRAMES} fps={30} width={1080} height={1920} />
+  <>
+    {EDITS.map((edit) => (
+      <Composition
+        key={edit.id}
+        id={edit.id}
+        component={Reel}
+        defaultProps={{ edit }}
+        durationInFrames={getDuration(edit)}
+        fps={30}
+        width={1080}
+        height={1920}
+      />
+    ))}
+  </>
 );
