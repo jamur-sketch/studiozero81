@@ -7,7 +7,7 @@ description: Edita Reels do Jamur (talking head) no padrão da marca, com Remoti
 
 O modelo fica em `video-editor/reels/`. Cada vídeo é um arquivo de configuração em
 `src/edits/<id>.ts` (só dados); os recursos visuais ficam em `src/components/`.
-Exemplo completo: `src/edits/toqan.ts`.
+Exemplos: `src/edits/completo.ts` (vídeo inteiro, ~98 s) e `src/edits/toqan.ts` (trecho de 30 s).
 
 ## Fluxo
 
@@ -34,6 +34,12 @@ Exemplo completo: `src/edits/toqan.ts`.
    node reels/render.mjs video <id>             # reels/out/<id>.mp4
    ```
    Registrar o novo edit em `src/Root.tsx` (`EDITS`).
+7. **Tempo alvo**: se passar do tempo (ex.: 90 s), acelerar o vídeo pronto sem mudar o tom de voz
+   (1,08x deixa 98 s em ~90 s):
+   ```sh
+   ffmpeg -i reels/out/<id>.mp4 -filter_complex "[0:v]setpts=PTS/1.08,fps=30[v];[0:a]atempo=1.08[a]" -map "[v]" -map "[a]" \
+     -c:v libx264 -crf 18 -movflags +faststart -c:a aac -b:a 192k reels/out/<id>-1.08x.mp4
+   ```
 
 ## Recursos (todos os tempos em segundos do vídeo editado)
 
@@ -42,6 +48,8 @@ Exemplo completo: `src/edits/toqan.ts`.
 | Card de título | `cards` `type: "title"` | Gancho nos primeiros 3–5 s, sempre. Texto curto, uma parte em dourado (`highlight`). |
 | Card de tópicos | `cards` `type: "points"` | Explicação em passos: o texto troca conforme a fala. Até ~6 palavras por tópico. |
 | Card de datas | `cards` `type: "dates"` | Linha do tempo com 1 a 3 marcos que aparecem quando são ditos. |
+| Comparação | `cards` `type: "compare"` | "X faz isso, Y faz aquilo": linhas que entram conforme a fala, com rodapé opcional. |
+| Frase de fechamento | `cards` `type: "statement"` | Última ideia do vídeo; a linha `gold` é a frase de impacto. |
 | Número em destaque | `callouts` | Um número forte (%, R$, "2 apps"). Um por vídeo, no máximo dois. |
 | Capítulo | `chapters` | Cortina verde com título ao mudar de bloco do roteiro (ex.: Toqan → Zesto). 1 a 3 por vídeo; dura 1 s e cobre o rosto, então coloque onde a fala repete o título. |
 | Tela dividida | `broll` `mode: "split"` | Mostrar algo enquanto ele fala: print, foto, gráfico. A imagem fica em cima, ele embaixo, a legenda na emenda. |

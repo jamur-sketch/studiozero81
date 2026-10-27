@@ -12,7 +12,18 @@ export type CardItem =
       title: string;
       highlight?: string;
       items: { at: number; date: string; text: string }[];
-    };
+    }
+  /** Side-by-side rows that build up as each is spoken (e.g. "ChatGPT x Toqan"), with an optional footer. */
+  | {
+      type: "compare";
+      from: number;
+      to: number;
+      label: string;
+      rows: { at: number; name: string; text: string }[];
+      footer?: { at: number; text: string };
+    }
+  /** Closing line(s); a `gold` line is the punchline. */
+  | { type: "statement"; from: number; to: number; label: string; lines: { at: number; text: string; gold?: boolean }[] };
 
 /** Graphics drawn in code, in the brand style. Add new kinds in components/Graphics.tsx. */
 export type Graphic = { kind: "chat"; title: string; questions: string[] };

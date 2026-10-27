@@ -122,6 +122,34 @@ const PointsBody: React.FC<{ card: Extract<CardItem, { type: "points" }> }> = ({
   );
 };
 
+const CompareBody: React.FC<{ card: Extract<CardItem, { type: "compare" }> }> = ({ card }) => (
+  <>
+    <Label>{card.label}</Label>
+    {card.rows.map((r, k) => (
+      <Reveal key={r.name} at={f(r.at - card.from)} style={{ display: "flex", alignItems: "baseline", gap: 24, marginTop: k ? 18 : 6 }}>
+        <div style={{ fontFamily: TITLE, fontWeight: 600, fontSize: 56, color: GOLD, minWidth: 230 }}>{r.name}</div>
+        <div style={{ fontFamily: BODY, fontWeight: 500, fontSize: 38, lineHeight: 1.25, color: CREAM }}>{r.text}</div>
+      </Reveal>
+    ))}
+    {card.footer && (
+      <Reveal at={f(card.footer.at - card.from)} style={{ marginTop: 26, paddingTop: 22, borderTop: "2px solid rgba(210,178,107,0.45)" }}>
+        <div style={{ fontFamily: BODY, fontWeight: 500, fontSize: 36, lineHeight: 1.3, color: CREAM }}>{card.footer.text}</div>
+      </Reveal>
+    )}
+  </>
+);
+
+const StatementBody: React.FC<{ card: Extract<CardItem, { type: "statement" }> }> = ({ card }) => (
+  <>
+    <Label>{card.label}</Label>
+    {card.lines.map((l, k) => (
+      <Reveal key={k} at={f(l.at - card.from)} style={{ marginTop: k ? 18 : 0 }}>
+        <div style={{ ...titleStyle(50), lineHeight: 1.14, color: l.gold ? GOLD : CREAM }}>{l.text}</div>
+      </Reveal>
+    ))}
+  </>
+);
+
 export const CardView: React.FC<{ card: CardItem }> = ({ card }) => {
   const durationInFrames = f(card.to) - f(card.from);
   return (
@@ -136,6 +164,8 @@ export const CardView: React.FC<{ card: CardItem }> = ({ card }) => {
       )}
       {card.type === "dates" && <DatesBody card={card} />}
       {card.type === "points" && <PointsBody card={card} />}
+      {card.type === "compare" && <CompareBody card={card} />}
+      {card.type === "statement" && <StatementBody card={card} />}
     </Card>
   );
 };

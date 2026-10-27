@@ -1,11 +1,12 @@
 import React from "react";
 import { Composition } from "remotion";
 import { getDuration, Reel } from "./Reel";
+import { completo } from "./edits/completo";
 import { toqan } from "./edits/toqan";
 import type { EditConfig } from "./types";
 
 // One entry per Reels. Render with: node render.mjs video <id>
-export const EDITS: EditConfig[] = [toqan];
+export const EDITS: EditConfig[] = [completo, toqan];
 
 export const Root: React.FC = () => (
   <>
